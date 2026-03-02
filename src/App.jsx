@@ -606,7 +606,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
   };
 
   const SCREENS = ["TV Sala", "TV Recepción", "TV Exterior", "Pantalla 4", "Pantalla 5", "Pantalla 6"];
-  console.log("RENDER ADMIN", { items, settings });
+
   return (
     <div className="admin">
       <div>
