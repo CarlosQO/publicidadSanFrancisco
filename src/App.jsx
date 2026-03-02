@@ -238,26 +238,11 @@ async function syncCache(newItems, oldItems = []) {
   }
 }
 
-// =====================================================
-// KIOSK VIEW
-// =====================================================
-// Estilo base para botones de control
-// const ctrlBtn = {
-//   background: "rgba(255,255,255,0.08)",
-//   border: "1px solid rgba(255,255,255,0.15)",
-//   color: "#fff",
-//   borderRadius: 10,
-//   padding: "8px 16px",
-//   fontSize: 14,
-//   cursor: "pointer",
-//   fontFamily: "'DM Sans', sans-serif",
-//   fontWeight: 500,
-//   width: 80,
-//   height: 44,
-//   display: "flex",
-//   alignItems: "center",
-//   justifyContent: "center",
-// };
+// ─── CAMBIOS APLICADOS ───────────────────────────────────────────────────────
+// 1. Videos NO se cachean como blob (evita pantalla negra y reinicios)
+// 2. key del <video> usa currentUrl para que React remonte al cambiar fuente
+// 3. Indicador "Cargando presentación..." mientras el video/imagen no está listo
+// ─────────────────────────────────────────────────────────────────────────────
 
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
@@ -267,6 +252,9 @@ function KioskView({ items, onExit }) {
   const [showControls, setShowControls] = useState(false);
   const [speed2x, setSpeed2x] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // ── NUEVO: estado de carga ──────────────────────────────────────────────────
+  const [isLoading, setIsLoading] = useState(true);
 
   const videoRef = useRef(null);
   const imgRef = useRef(null);
@@ -278,15 +266,26 @@ function KioskView({ items, onExit }) {
 
   const current = items[idx];
   const isVideo = current?.type === "video";
-  const resolveUrl = (item) => cachedUrls[item?.url] || item?.url || "";
 
-  // ── Cache ────────────────────────────────────────────────────────────────────
+  // ── FIX 1: Videos NO se cachean como blob ───────────────────────────────────
+  // Los videos pueden pesar cientos de MB; cargarlos en memoria causa pantalla
+  // negra, fallos silenciosos y que el browser descarte el blob a mitad.
+  // Las imágenes sí se cachean igual que antes.
+  const resolveUrl = (item) => {
+    if (!item) return "";
+    if (item.type === "video") return item.url || ""; // ← siempre URL directa
+    return cachedUrls[item.url] || item.url || "";
+  };
+
+  // ── Cache (solo imágenes) ───────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const loadAll = async () => {
       const result = {};
       for (const item of items) {
         if (cancelled) break;
+        // FIX: saltamos videos
+        if (item.type === "video") continue;
         if (item.url?.startsWith("http")) {
           const local = await getCachedUrl(item.url);
           if (local !== item.url) blobUrlsRef.current.push(local);
@@ -304,6 +303,11 @@ function KioskView({ items, onExit }) {
       blobUrlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { } });
     };
   }, []);
+
+  // ── FIX 2: Resetear isLoading al cambiar de ítem ───────────────────────────
+  useEffect(() => {
+    setIsLoading(true);
+  }, [idx]);
 
   // ── Forzar tamaño ────────────────────────────────────────────────────────────
   const forceSize = useCallback((el) => {
@@ -329,7 +333,11 @@ function KioskView({ items, onExit }) {
     if (el) forceSize(el);
   }, [idx, isVideo, forceSize]);
 
-  const onMediaLoad = useCallback((e) => { forceSize(e.target); }, [forceSize]);
+  // ── FIX 3: onMediaLoad también quita el loading ────────────────────────────
+  const onMediaLoad = useCallback((e) => {
+    forceSize(e.target);
+    setIsLoading(false);
+  }, [forceSize]);
 
   useEffect(() => {
     const onResize = () => {
@@ -370,16 +378,14 @@ function KioskView({ items, onExit }) {
   const prev = useCallback(() => goTo(idx - 1), [idx, goTo]);
   const goFirst = useCallback(() => goTo(0), [goTo]);
 
-  // ── Ref estable para next — evita closures viejos en listeners ───────────────
   const nextRef = useRef(null);
   useEffect(() => { nextRef.current = next; }, [next]);
 
-  // ── Timer imágenes — SOLO si NO es video ─────────────────────────────────────
+  // ── Timer imágenes ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!current || isVideo) return; // guardia estricta
+    if (!current || isVideo) return;
     clearTimeout(timerRef.current);
     clearInterval(progressRef.current);
-
     if (paused) return;
 
     const totalDur = (current.duration || 5) * 1000;
@@ -396,14 +402,14 @@ function KioskView({ items, onExit }) {
 
     timerRef.current = setTimeout(() => {
       pausedAtRef.current = 0;
-      nextRef.current?.(); // ← siempre la versión más reciente de next
+      nextRef.current?.();
     }, remaining);
 
     return () => {
       clearTimeout(timerRef.current);
       clearInterval(progressRef.current);
     };
-  }, [idx, isVideo, paused, speed2x]); // sin "items" ni "next"
+  }, [idx, isVideo, paused, speed2x]);
 
   // ── Video: velocidad x2 ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -412,18 +418,13 @@ function KioskView({ items, onExit }) {
     v.playbackRate = speed2x ? 2 : 1;
   }, [speed2x, idx, isVideo]);
 
-  // ── Video: eventos ended + timeupdate ────────────────────────────────────────
+  // ── Video: ended + timeupdate ────────────────────────────────────────────────
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !isVideo) return;
 
-    const onEnd = () => {
-      setSpeed2x(false);
-      nextRef.current?.(); // ← ref estable, nunca closure viejo
-    };
-    const onTime = () => {
-      if (v.duration) setProgress((v.currentTime / v.duration) * 100);
-    };
+    const onEnd = () => { setSpeed2x(false); nextRef.current?.(); };
+    const onTime = () => { if (v.duration) setProgress((v.currentTime / v.duration) * 100); };
 
     v.addEventListener("ended", onEnd);
     v.addEventListener("timeupdate", onTime);
@@ -431,9 +432,9 @@ function KioskView({ items, onExit }) {
       v.removeEventListener("ended", onEnd);
       v.removeEventListener("timeupdate", onTime);
     };
-  }, [idx, isVideo]); // sin "next"
+  }, [idx, isVideo]);
 
-  // ── Seek en video ────────────────────────────────────────────────────────────
+  // ── Seek ─────────────────────────────────────────────────────────────────────
   const seekTo = (pct) => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
@@ -441,30 +442,21 @@ function KioskView({ items, onExit }) {
     setProgress(pct * 100);
   };
 
-  // ── Bloquear scroll y overflow ───────────────────────────────────────────────
+  // ── Bloquear scroll/overflow/gestos ─────────────────────────────────────────
   useEffect(() => {
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; document.documentElement.style.overflow = ""; };
   }, []);
 
-  // ── FIX 1: Bloquea touch-action — evita zoom/gestos del SO/Chrome ───────────
   useEffect(() => {
     const el = document.documentElement;
     el.style.touchAction = "none";
     el.style.overscrollBehavior = "none";
     el.style.userSelect = "none";
-    return () => {
-      el.style.touchAction = "";
-      el.style.overscrollBehavior = "";
-      el.style.userSelect = "";
-    };
+    return () => { el.style.touchAction = ""; el.style.overscrollBehavior = ""; el.style.userSelect = ""; };
   }, []);
 
-  // ── FIX 2: Bloquea menú contextual de Windows (doble tap 2 dedos) ───────────
   useEffect(() => {
     const block = (e) => e.preventDefault();
     window.addEventListener("contextmenu", block);
@@ -479,18 +471,12 @@ function KioskView({ items, onExit }) {
           if (showControls) { setShowControls(false); setPaused(false); }
           else onExit();
           break;
-        case "f": case "F":
-          isFullscreen ? exitFullscreen() : enterFullscreen();
-          break;
+        case "f": case "F": isFullscreen ? exitFullscreen() : enterFullscreen(); break;
         case "l": case "L": goFirst(); break;
         case "ArrowRight": next(); break;
         case "ArrowLeft": prev(); break;
         case " ":
-          if (isVideo) {
-            videoRef.current?.paused
-              ? videoRef.current.play()
-              : videoRef.current?.pause();
-          }
+          if (isVideo) { videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause(); }
           break;
         default: break;
       }
@@ -499,7 +485,7 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("keydown", handler);
   }, [next, prev, goFirst, onExit, isFullscreen, showControls, isVideo]);
 
-  // ── FIX 3: Gestos táctiles con passive:false + preventDefault ───────────────
+  // ── Gestos táctiles ──────────────────────────────────────────────────────────
   useEffect(() => {
     let gestureStartTouches = [];
     let doubleTapTimer = null;
@@ -518,19 +504,16 @@ function KioskView({ items, onExit }) {
     };
 
     const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-
     const avgDist4 = (touches) => {
       const pts = Array.from(touches).slice(0, 4);
       let total = 0, count = 0;
       for (let i = 0; i < pts.length; i++)
-        for (let j = i + 1; j < pts.length; j++) {
-          total += dist2(pts[i], pts[j]); count++;
-        }
+        for (let j = i + 1; j < pts.length; j++) { total += dist2(pts[i], pts[j]); count++; }
       return total / count;
     };
 
     const onTouchStart = (e) => {
-      e.preventDefault(); // ⛔ bloquea zoom, menú y gestos del SO
+      e.preventDefault();
       const n = e.touches.length;
       gestureStartTouches = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
 
@@ -539,21 +522,13 @@ function KioskView({ items, onExit }) {
         gestureStartDist = avgDist4(e.touches);
         return;
       }
-
       gestureStartDist = null;
 
       if (n === 2) {
         const zone = getZone(e.touches);
-
-        longPressTimer = setTimeout(() => {
-          speed2xActive = true;
-          setSpeed2x(true);
-          navigator.vibrate?.(60);
-        }, 600);
-
+        longPressTimer = setTimeout(() => { speed2xActive = true; setSpeed2x(true); navigator.vibrate?.(60); }, 600);
         tapCount++;
         tapZone = zone;
-
         if (doubleTapTimer) clearTimeout(doubleTapTimer);
         doubleTapTimer = setTimeout(() => { tapCount = 0; tapZone = null; }, 400);
 
@@ -561,18 +536,10 @@ function KioskView({ items, onExit }) {
           tapCount = 0;
           clearTimeout(doubleTapTimer);
           clearTimeout(longPressTimer);
-
-          if (zone === "left") {
-            prev();
-            navigator.vibrate?.(15);
-          } else if (zone === "right") {
-            next();
-            navigator.vibrate?.(15);
-          } else {
-            if (isVideo) {
-              const v = videoRef.current;
-              if (v) { v.paused ? v.play() : v.pause(); }
-            }
+          if (zone === "left") { prev(); navigator.vibrate?.(15); }
+          else if (zone === "right") { next(); navigator.vibrate?.(15); }
+          else {
+            if (isVideo) { const v = videoRef.current; if (v) { v.paused ? v.play() : v.pause(); } }
             setPaused(p => !p);
             setShowControls(p => !p);
             navigator.vibrate?.([20, 30, 20]);
@@ -580,49 +547,31 @@ function KioskView({ items, onExit }) {
         }
         return;
       }
-
       clearTimeout(longPressTimer);
     };
 
     const onTouchMove = (e) => {
-      e.preventDefault(); // ⛔ evita zoom de página con pinch
-
+      e.preventDefault();
       if (e.touches.length === 4 && gestureStartDist !== null) {
         const currentDist = avgDist4(e.touches);
         const ratio = currentDist / gestureStartDist;
-        if (ratio > 1.25) {
-          enterFullscreen();
-          gestureStartDist = currentDist;
-          navigator.vibrate?.(30);
-        } else if (ratio < 0.75) {
-          exitFullscreen();
-          gestureStartDist = currentDist;
-          navigator.vibrate?.(30);
-        }
+        if (ratio > 1.25) { enterFullscreen(); gestureStartDist = currentDist; navigator.vibrate?.(30); }
+        else if (ratio < 0.75) { exitFullscreen(); gestureStartDist = currentDist; navigator.vibrate?.(30); }
       }
-
       if (e.touches.length === 2) {
         const cur = Array.from(e.touches);
-        const moved = cur.some((t, i) => {
-          const s = gestureStartTouches[i];
-          return s && Math.hypot(t.clientX - s.x, t.clientY - s.y) > 12;
-        });
+        const moved = cur.some((t, i) => { const s = gestureStartTouches[i]; return s && Math.hypot(t.clientX - s.x, t.clientY - s.y) > 12; });
         if (moved) clearTimeout(longPressTimer);
       }
     };
 
     const onTouchEnd = (e) => {
       e.preventDefault();
-      if (speed2xActive && e.touches.length < 2) {
-        speed2xActive = false;
-        setSpeed2x(false);
-        navigator.vibrate?.(20);
-      }
+      if (speed2xActive && e.touches.length < 2) { speed2xActive = false; setSpeed2x(false); navigator.vibrate?.(20); }
       if (e.touches.length < 2) clearTimeout(longPressTimer);
       if (e.touches.length < 4) gestureStartDist = null;
     };
 
-    // ⛔ passive:false OBLIGATORIO
     window.addEventListener("touchstart", onTouchStart, { passive: false });
     window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd, { passive: false });
@@ -653,25 +602,60 @@ function KioskView({ items, onExit }) {
   return (
     <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#000", zIndex: 99999, overflow: "hidden", margin: 0, padding: 0 }}>
 
+      {/* ── FIX 2: key usa currentUrl para videos → React remonta al cambiar src ── */}
       {isVideo ? (
         <video
-          key={current.url}
+          key={currentUrl}                          // ← CAMBIADO: era current.url
           ref={(el) => { videoRef.current = el; forceSize(el); }}
           src={currentUrl}
           autoPlay
           playsInline
-          // ⛔ Sin onEnded aquí — lo maneja el listener con nextRef para evitar closures viejos
-          onLoadedMetadata={onMediaLoad}
+          preload="auto"                            // ← NUEVO: empieza a bufferear antes
+          onLoadedMetadata={onMediaLoad}            // quita isLoading
+          onCanPlay={() => setIsLoading(false)}     // ← NUEVO: fallback más temprano
         />
       ) : (
         <img
-          key={current.url}
+          key={currentUrl}
           ref={(el) => { imgRef.current = el; forceSize(el); }}
           src={currentUrl}
           alt={current.title}
           draggable={false}
           onLoad={onMediaLoad}
         />
+      )}
+
+      {/* ── NUEVO: Overlay "Cargando presentación" ─────────────────────────────── */}
+      {isLoading && (
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "#000",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          gap: 20, zIndex: 50, pointerEvents: "none",
+        }}>
+          {/* Spinner */}
+          <div style={{
+            width: 56, height: 56,
+            border: "4px solid rgba(108,99,255,0.25)",
+            borderTopColor: "#6c63ff",
+            borderRadius: "50%",
+            animation: "kioskSpin 0.9s linear infinite",
+          }} />
+          <div style={{
+            color: "rgba(255,255,255,0.85)",
+            fontFamily: "'Space Mono', monospace",
+            fontSize: 15,
+            letterSpacing: "0.08em",
+          }}>Cargando presentación…</div>
+
+          {/* Keyframe inyectado una sola vez */}
+          <style>{`
+            @keyframes kioskSpin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
       )}
 
       {/* ── Indicador x2 ── */}
