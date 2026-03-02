@@ -574,16 +574,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
   };
 
   const updateDuration = (id, delta) => {
-    setItems(currentItems =>
-      currentItems.map(it => {
-        if (it.id === id) {
-          // Forzamos que la base sea un número real para evitar errores de tipo en móviles
-          const currentDur = parseInt(it.duration) || 5;
-          return { ...it, duration: Math.max(1, currentDur + delta) };
-        }
-        return it;
-      })
-    );
+    setItems(prev => prev.map(it => it.id === id ? { ...it, duration: Math.max(1, (it.duration || 5) + delta) } : it));
   };
 
   const removeItem = async (id) => {
