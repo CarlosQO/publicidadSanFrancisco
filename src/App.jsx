@@ -238,18 +238,6 @@ async function syncCache(newItems, oldItems = []) {
   }
 }
 
-// ─── CAMBIOS APLICADOS ───────────────────────────────────────────────────────
-// 1. Videos NO se cachean como blob (evita pantalla negra y reinicios)
-// 2. key del <video> usa currentUrl para que React remonte al cambiar fuente
-// 3. Indicador "Cargando presentación..." mientras el video/imagen no está listo
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─── CAMBIOS APLICADOS ───────────────────────────────────────────────────────
-// 1. Videos NO se cachean como blob (evita pantalla negra y reinicios)
-// 2. key del <video> usa currentUrl para que React remonte al cambiar fuente
-// 3. Indicador "Cargando presentación..." mientras el video/imagen no está listo
-// ─────────────────────────────────────────────────────────────────────────────
-
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -259,9 +247,8 @@ function KioskView({ items, onExit }) {
   const [speed2x, setSpeed2x] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // ── Carga inicial: solo se muestra UNA VEZ al arrancar ─────────────────────
   const [isLoading, setIsLoading] = useState(true);
-  const initialLoadDone = useRef(false); // una vez que el primer ítem carga, nunca más
+  const initialLoadDone = useRef(false);
 
   const videoRef = useRef(null);
   const imgRef = useRef(null);
@@ -274,17 +261,12 @@ function KioskView({ items, onExit }) {
   const current = items[idx];
   const isVideo = current?.type === "video";
 
-  // ── FIX 1: Videos NO se cachean como blob ───────────────────────────────────
-  // Los videos pueden pesar cientos de MB; cargarlos en memoria causa pantalla
-  // negra, fallos silenciosos y que el browser descarte el blob a mitad.
-  // Las imágenes sí se cachean igual que antes.
   const resolveUrl = (item) => {
     if (!item) return "";
-    if (item.type === "video") return item.url || ""; // ← siempre URL directa
+    if (item.type === "video") return item.url || "";
     return cachedUrls[item.url] || item.url || "";
   };
 
-  // ── Cache (solo imágenes) ───────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const loadAll = async () => {
@@ -335,7 +317,6 @@ function KioskView({ items, onExit }) {
     if (el) forceSize(el);
   }, [idx, isVideo, forceSize]);
 
-  // ── FIX 3: onMediaLoad quita el loading solo la primera vez ───────────────
   const onMediaLoad = useCallback((e) => {
     forceSize(e.target);
     if (!initialLoadDone.current) {
@@ -416,14 +397,12 @@ function KioskView({ items, onExit }) {
     };
   }, [idx, isVideo, paused, speed2x]);
 
-  // ── Video: velocidad x2 ──────────────────────────────────────────────────────
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !isVideo) return;
     v.playbackRate = speed2x ? 2 : 1;
   }, [speed2x, idx, isVideo]);
 
-  // ── Video: ended + timeupdate ────────────────────────────────────────────────
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !isVideo) return;
@@ -439,7 +418,6 @@ function KioskView({ items, onExit }) {
     };
   }, [idx, isVideo]);
 
-  // ── Seek ─────────────────────────────────────────────────────────────────────
   const seekTo = (pct) => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
@@ -447,7 +425,6 @@ function KioskView({ items, onExit }) {
     setProgress(pct * 100);
   };
 
-  // ── Bloquear scroll/overflow/gestos ─────────────────────────────────────────
   useEffect(() => {
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
@@ -588,10 +565,8 @@ function KioskView({ items, onExit }) {
       clearTimeout(longPressTimer);
       clearTimeout(doubleTapTimer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, isVideo, isFullscreen]);
 
-  // ── Sin contenido ────────────────────────────────────────────────────────────
   if (!items.length) return (
     <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, zIndex: 99999 }}>
       <div style={{ fontSize: 48 }}>📺</div>
@@ -607,16 +582,15 @@ function KioskView({ items, onExit }) {
   return (
     <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#000", zIndex: 99999, overflow: "hidden", margin: 0, padding: 0 }}>
 
-      {/* ── FIX 2: key usa currentUrl para videos → React remonta al cambiar src ── */}
       {isVideo ? (
         <video
-          key={currentUrl}                          // ← CAMBIADO: era current.url
+          key={currentUrl}
           ref={(el) => { videoRef.current = el; forceSize(el); }}
           src={currentUrl}
           autoPlay
           playsInline
-          preload="auto"                            // ← NUEVO: empieza a bufferear antes
-          onLoadedMetadata={onMediaLoad}            // quita isLoading
+          preload="auto"
+          onLoadedMetadata={onMediaLoad}
           onCanPlay={() => { if (!initialLoadDone.current) { initialLoadDone.current = true; setIsLoading(false); } }}
         />
       ) : (
@@ -630,7 +604,6 @@ function KioskView({ items, onExit }) {
         />
       )}
 
-      {/* ── NUEVO: Overlay "Cargando presentación" ─────────────────────────────── */}
       {isLoading && (
         <div style={{
           position: "absolute", inset: 0,
@@ -654,7 +627,6 @@ function KioskView({ items, onExit }) {
             letterSpacing: "0.08em",
           }}>Cargando presentación…</div>
 
-          {/* Keyframe inyectado una sola vez */}
           <style>{`
             @keyframes kioskSpin {
               to { transform: rotate(360deg); }
@@ -663,7 +635,6 @@ function KioskView({ items, onExit }) {
         </div>
       )}
 
-      {/* ── Indicador x2 ── */}
       {speed2x && (
         <div style={{
           position: "absolute", top: 24, left: "50%", transform: "translateX(-50%)",
@@ -674,7 +645,6 @@ function KioskView({ items, onExit }) {
         }}>⚡ ×2</div>
       )}
 
-      {/* ── Barra de control ── */}
       {showControls && (
         <div style={{
           position: "absolute", bottom: 28, left: "50%", transform: "translateX(-50%)",
@@ -741,7 +711,6 @@ function KioskView({ items, onExit }) {
         </div>
       )}
 
-      {/* ── Barra de progreso inferior ── */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.12)", zIndex: 10, pointerEvents: "none" }}>
         <div style={{ height: "100%", background: "#6c63ff", width: progress + "%", transition: "width 0.1s linear" }} />
       </div>
@@ -749,7 +718,6 @@ function KioskView({ items, onExit }) {
   );
 }
 
-// Estilo base para botones de control
 const ctrlBtn = {
   background: "rgba(255,255,255,0.08)",
   border: "1px solid rgba(255,255,255,0.15)",
@@ -767,9 +735,6 @@ const ctrlBtn = {
   justifyContent: "center",
 };
 
-// =====================================================
-// ADMIN PANEL
-// =====================================================
 function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }) {
   const [drag, setDrag] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -1016,10 +981,6 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
     </div>
   );
 }
-
-// =====================================================
-// APP ROOT
-// =====================================================
 export default function App() {
   const [view, setView] = useState(() => window.location.hash === "#kiosk" ? "kiosk" : "admin");
 
@@ -1038,7 +999,6 @@ export default function App() {
     activeScreens: [0],
   });
 
-  // ─── REFS de control ────────────────────────────────────────────────────────
   const localVersionRef = useRef(null);
   const pendingSaveRef = useRef(null);
   const isSavingRef = useRef(false); // ← NUEVO: flag para ignorar rebotes
@@ -1047,7 +1007,6 @@ export default function App() {
   useEffect(() => { itemsRef.current = items; }, [items]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
-  // ─── CARGA INICIAL ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) { setLoaded(true); return; }
     const load = async () => {
@@ -1066,7 +1025,6 @@ export default function App() {
     load();
   }, []);
 
-  // ─── GUARDADO con debounce ───────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase || !loaded || items.length === 0) return;
 
@@ -1090,9 +1048,6 @@ export default function App() {
       }
 
       setSaving(false);
-
-      // ← Desactivamos el flag después de un margen generoso
-      // El margen cubre el tiempo que tarda el evento realtime en llegar
       setTimeout(() => { isSavingRef.current = false; }, 3000);
 
     }, 800);
@@ -1100,7 +1055,6 @@ export default function App() {
     return () => { if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current); };
   }, [items, settings, loaded]);
 
-  // ─── LISTENER REALTIME ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) return;
 
@@ -1112,16 +1066,13 @@ export default function App() {
         (payload) => {
           if (!payload.new) return;
 
-          // ← Si acabamos de guardar nosotros, ignoramos el rebote sin comparar timestamps
           if (isSavingRef.current) return;
 
           const serverVersion = payload.new.updated_at;
           const myVersion = localVersionRef.current;
 
-          // Doble chequeo con timestamp por si el flag ya se limpió
           if (myVersion && serverVersion <= myVersion) return;
 
-          // Es un cambio real de otro dispositivo → aplicar
           setItems(prev => {
             syncCache(payload.new.items || [], prev);
             return payload.new.items || [];
