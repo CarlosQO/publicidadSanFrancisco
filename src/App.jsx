@@ -16,7 +16,7 @@ try {
 } catch (e) { }
 
 // =====================================================
-// STYLES - Responsive mejorado para mobile
+// STYLES
 // =====================================================
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
@@ -68,62 +68,22 @@ const style = `
   .upload-filename { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .upload-percent { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; flex-shrink: 0; }
 
-  .media-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
-  .media-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 14px; 
-    background: var(--surface2); 
-    border: 1px solid var(--border); 
-    border-radius: 14px; 
-    padding: 14px 16px; 
-    cursor: grab; 
-    transition: all 0.25s ease; 
-    position: relative;
-  }
+  .media-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .media-item { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: grab; transition: all 0.2s; }
   .media-item:hover { border-color: var(--accent); }
   .media-item.dragging { opacity: 0.4; }
   .media-item.drag-over { border-color: var(--accent2); background: rgba(255,101,132,0.05); }
-
-  .drag-handle { color: var(--text-dim); font-size: 20px; cursor: grab; flex-shrink: 0; padding: 4px 6px; }
-  .media-thumb { width: 64px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
-  .media-thumb-video { width: 64px; height: 48px; border-radius: 10px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .drag-handle { color: var(--text-dim); font-size: 18px; cursor: grab; flex-shrink: 0; }
+  .media-thumb { width: 56px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
+  .media-thumb-video { width: 56px; height: 40px; border-radius: 6px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; }
   .media-info { flex: 1; min-width: 0; }
-  .media-name { font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .media-type { font-size: 11.5px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
-
-  .media-duration { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .dur-btn { 
-    width: 34px; 
-    height: 34px; 
-    border-radius: 8px; 
-    border: 1px solid var(--border); 
-    background: var(--surface); 
-    color: var(--text); 
-    cursor: pointer; 
-    font-size: 15px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.2s; 
-  }
+  .media-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media-type { font-size: 11px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .media-duration { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .dur-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .dur-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .dur-val { font-family: 'Space Mono', monospace; font-size: 14.5px; min-width: 42px; text-align: center; }
-
-  .del-btn { 
-    width: 32px; 
-    height: 32px; 
-    border-radius: 8px; 
-    border: none; 
-    background: transparent; 
-    color: var(--text-dim); 
-    cursor: pointer; 
-    font-size: 18px; 
-    transition: all 0.2s; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-  }
+  .dur-val { font-family: 'Space Mono', monospace; font-size: 13px; min-width: 32px; text-align: center; }
+  .del-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
   .del-btn:hover { background: rgba(255,95,126,0.15); color: var(--danger); }
 
   .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
@@ -147,15 +107,60 @@ const style = `
   .btn-primary:active { transform: translateY(0); }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  /* KIOSK — NO TOCADO */
+  /* =====================================================
+     KIOSK — SOLUCION DEFINITIVA
+     
+     Problema raiz: width/height en px inyectados por el
+     navegador en imagenes 4K/8K tienen mayor especificidad
+     que clases CSS. La solucion es NO usar width/height
+     en el elemento media. En su lugar, el CONTENEDOR es
+     flex y el media solo tiene max-width/max-height 100%.
+     El navegador calcula las dimensiones proporcionalmente
+     sin que ningun atributo HTML lo interfiera.
+  ===================================================== */
   .kiosk-wrap {
-    position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
-    background: #000 !important; z-index: 99999 !important; overflow: hidden !important;
-    display: flex !important; align-items: center !important; justify-content: center !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: #000 !important;
+    z-index: 99999 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  .kiosk-wrap img, .kiosk-wrap video {
-    display: block !important; max-width: 100vw !important; max-height: 100vh !important;
-    width: auto !important; height: auto !important; flex-shrink: 1 !important;
+
+  /* SIN width ni height absolutos — solo maximos */
+  .kiosk-wrap img,
+  .kiosk-wrap video {
+    display: block !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    width: auto !important;
+    height: auto !important;
+    flex-shrink: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Sin object-fit — no hace falta cuando width/height son auto */
+  }
+
+  .kiosk-progress-bar {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 3px !important;
+    background: rgba(255,255,255,0.12) !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
+  }
+  .kiosk-progress-fill {
+    height: 100% !important;
+    background: #6c63ff !important;
+    transition: width 0.1s linear !important;
   }
 
   .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: 14px; z-index: 999999; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); animation: slideUp 0.3s ease; white-space: nowrap; }
@@ -169,21 +174,6 @@ const style = `
   .key { font-family: 'Space Mono', monospace; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 11px; color: var(--accent); }
   .realtime-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-  /* ==================== RESPONSIVE MOBILE ==================== */
-  @media (max-width: 1024px) {
-    .admin { grid-template-columns: 1fr; padding: 20px 16px; gap: 20px; }
-  }
-  @media (max-width: 480px) {
-    .media-item { padding: 14px; gap: 12px; flex-wrap: wrap; border-radius: 16px; }
-    .media-thumb, .media-thumb-video { width: 72px; height: 54px; border-radius: 12px; }
-    .media-info { flex: 1 1 100%; margin-top: 4px; }
-    .media-duration { margin-top: 8px; width: 100%; justify-content: center; gap: 12px; }
-    .dur-btn { width: 42px; height: 42px; font-size: 18px; }
-    .dur-val { font-size: 16px; min-width: 50px; }
-    .del-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; font-size: 17px; }
-    .drag-handle { font-size: 22px; }
-  }
 `;
 
 function Toast({ msg, icon = "✓" }) {
@@ -196,6 +186,9 @@ function generateId() {
 
 // =====================================================
 // CACHE MANAGER
+// Guarda archivos en Cache API del navegador.
+// Solo descarga de Supabase cuando la URL cambia.
+// El TV funciona sin internet si ya tiene el caché.
 // =====================================================
 const CACHE_NAME = "adkiosk-media-v1";
 
@@ -239,7 +232,7 @@ async function syncCache(newItems, oldItems = []) {
 }
 
 // =====================================================
-// KIOSK VIEW (sin tocar)
+// KIOSK VIEW
 // =====================================================
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
@@ -256,6 +249,7 @@ function KioskView({ items, onExit }) {
   const isVideo = current?.type === "video";
   const resolveUrl = (item) => cachedUrls[item?.url] || item?.url || "";
 
+  // Carga todas las URLs en caché local al montar
   useEffect(() => {
     let cancelled = false;
     const loadAll = async () => {
@@ -274,6 +268,7 @@ function KioskView({ items, onExit }) {
     return () => { cancelled = true; };
   }, [items]);
 
+  // Limpia blob URLs al desmontar
   useEffect(() => {
     return () => {
       blobUrlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { } });
@@ -374,6 +369,7 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("keydown", handler);
   }, [next, prev, goFirst, toggleFullscreen, onExit]);
 
+  // Gestos táctiles
   useEffect(() => {
     let startX = 0, startY = 0, startTime = 0;
     let touchCount = 0;
@@ -387,6 +383,7 @@ function KioskView({ items, onExit }) {
       startY = e.touches[0].clientY;
       startTime = Date.now();
       pathPoints = [{ x: startX, y: startY }];
+      // Mantener 1.5s → pantalla completa
       longPressTimer = setTimeout(() => {
         toggleFullscreen();
         navigator.vibrate?.(40);
@@ -413,20 +410,26 @@ function KioskView({ items, onExit }) {
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
 
+      // 3 dedos tap → salir
       if (touchCount === 3 && elapsed < 400 && absDx < 30 && absDy < 30) {
         onExit(); navigator.vibrate?.(30); return;
       }
+
+      // 2 dedos swipe arriba → ir al primero
       if (touchCount === 2 && dy < -80 && absDy > absDx) {
         goFirst(); navigator.vibrate?.([20, 30, 20]); return;
       }
+
       if (touchCount !== 1) return;
 
+      // Doble tap → ir al primero
       const now = Date.now();
       if (now - lastTap < 300 && absDx < 30 && absDy < 30) {
         goFirst(); navigator.vibrate?.([20, 30, 20]); lastTap = 0; return;
       }
       lastTap = now;
 
+      // Dibujar L → ir al primero
       if (pathPoints.length >= 4 && elapsed > 200 && elapsed < 1500) {
         const mid = Math.floor(pathPoints.length / 2);
         const s1 = pathPoints.slice(0, mid), s2 = pathPoints.slice(mid);
@@ -441,12 +444,14 @@ function KioskView({ items, onExit }) {
         }
       }
 
+      // Swipe horizontal → navegar
       if (absDx > 60 && absDx > absDy * 1.5 && elapsed < 500) {
         if (dx > 0) { prev(); navigator.vibrate?.(15); }
         else { next(); navigator.vibrate?.(15); }
         return;
       }
 
+      // Tap zona izquierda → anterior, zona derecha → siguiente
       if (elapsed < 200 && absDx < 20 && absDy < 20) {
         const W = window.innerWidth;
         if (startX < W * 0.25) { prev(); navigator.vibrate?.(15); }
@@ -578,11 +583,15 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
 
   const removeItem = async (id) => {
     const item = items.find(it => it.id === id);
+    // Eliminar del storage si es una URL de Supabase
     if (supabase && item?.url?.includes(SUPABASE_URL)) {
       try {
+        // Extraer el path del archivo desde la URL pública
+        // URL formato: https://xxx.supabase.co/storage/v1/object/public/media/FILENAME
         const parts = item.url.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`);
         if (parts[1]) {
-          await supabase.storage.from(STORAGE_BUCKET).remove([parts[1]]);
+          const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([parts[1]]);
+          if (error) console.error("Error eliminando storage:", error.message);
         }
       } catch (err) {
         console.error("Error eliminando archivo:", err);
@@ -682,21 +691,12 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                   </div>
                   {item.type === "image" && (
                     <div className="media-duration">
-                      <button
-                        className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
-                      >−</button>
+                      <button className="dur-btn" onClick={() => updateDuration(item.id, -1)}>−</button>
                       <span className="dur-val">{item.duration || 5}s</span>
-                      <button
-                        className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
-                      >+</button>
+                      <button className="dur-btn" onClick={() => updateDuration(item.id, 1)}>+</button>
                     </div>
                   )}
-                  <button
-                    className="del-btn"
-                    onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                  >✕</button>
+                  <button className="del-btn" onClick={() => removeItem(item.id)}>✕</button>
                 </div>
               ))}
             </div>
@@ -766,6 +766,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
 // APP ROOT
 // =====================================================
 export default function App() {
+  // Persiste la vista en el hash de la URL → F5 restaura el estado
   const [view, setView] = useState(() => window.location.hash === "#kiosk" ? "kiosk" : "admin");
 
   const changeView = (v) => {
@@ -795,50 +796,31 @@ export default function App() {
     load();
   }, []);
 
-  // 1. Agrega esta referencia al inicio de tu componente App (junto a los otros useRef)
-  const lastLocalUpdate = useRef(0);
-
-  // 2. Modifica el useEffect de guardado así:
   useEffect(() => {
     if (!supabase || !loaded) return;
-
     setSaving(true);
-    // Registramos que acabamos de hacer un cambio manual
-    lastLocalUpdate.current = Date.now();
-
     const save = async () => {
-      await supabase.from("ad_playlists").upsert({
-        id: "main",
-        items,
-        settings,
-        updated_at: new Date().toISOString()
-      });
+      await supabase.from("ad_playlists").upsert({ id: "main", items, settings, updated_at: new Date().toISOString() });
       setSaving(false);
     };
-
     const t = setTimeout(save, 800);
     return () => clearTimeout(t);
   }, [items, settings, loaded]);
 
   useEffect(() => {
     if (!supabase) return;
-
-    const channel = supabase.channel("playlist-changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
-        (payload) => {
-          if (payload.new) {
-            setItems(payload.new.items || []);
-            setSettings(payload.new.settings || {});
-          }
+    const channel = supabase.channel("playlist")
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_playlists" }, (payload) => {
+        if (payload.new?.items) {
+          // Sincroniza caché: descarga nuevos, elimina los que ya no están
+          setItems(prev => {
+            syncCache(payload.new.items, prev);
+            return payload.new.items;
+          });
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+        if (payload.new?.settings) setSettings(payload.new.settings);
+      }).subscribe();
+    return () => supabase.removeChannel(channel);
   }, []);
 
   if (view === "kiosk") {
