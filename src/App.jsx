@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// =====================================================
-// 🔧 CONFIGURACIÓN — Reemplaza con tus credenciales
-// =====================================================
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_BUCKET = "media";
@@ -16,13 +13,13 @@ try {
 } catch (e) { }
 
 // =====================================================
-// STYLES - Responsive mejorado para mobile
+// STYLES — Responsive completo para todos los tamaños
 // =====================================================
 const style = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  
+
   :root {
     --bg: #0a0a0f;
     --surface: #13131a;
@@ -35,154 +32,433 @@ const style = `
     --success: #43d9a0;
     --warning: #ffb347;
     --danger: #ff5f7e;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    /* Espaciado fluido */
+    --space-xs: clamp(6px, 1.5vw, 10px);
+    --space-sm: clamp(10px, 2vw, 14px);
+    --space-md: clamp(14px, 3vw, 20px);
+    --space-lg: clamp(20px, 4vw, 28px);
+    --space-xl: clamp(24px, 5vw, 40px);
   }
 
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);}
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
+  /* ── App shell ──────────────────────────────────── */
   .app { min-height: 100vh; display: flex; flex-direction: column; }
-  .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
-  .nav-logo { font-family: 'Space Mono', monospace; font-size: 15px; color: var(--accent); letter-spacing: 2px; }
-  .nav-tabs { display: flex; gap: 4px; }
-  .nav-tab { padding: 7px 20px; border-radius: 8px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; transition: all 0.2s; background: transparent; color: var(--text-dim); }
-  .nav-tab.active { background: var(--accent); color: white; }
-  .nav-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
-  .nav-screens { display: flex; align-items: center; gap: 10px; }
-  .screen-badge { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+
+  /* ── NAV ──────────────────────────────────────────── */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-lg);
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 12px;
+  }
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(11px, 2.5vw, 15px);
+    color: var(--accent);
+    letter-spacing: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .nav-screens {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .screen-badge {
+    font-size: clamp(9px, 2vw, 11px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+  }
   .screen-badge span { color: var(--success); }
 
-  .admin { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
-  .panel-title { font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 20px; }
+  /* ── ADMIN LAYOUT ─────────────────────────────────── */
+  .admin {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    align-items: start;
+  }
 
-  .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 24px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
-  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(108,99,255,0.05); }
-  .upload-zone.uploading-active { border-color: var(--accent); background: rgba(108,99,255,0.05); cursor: default; pointer-events: none; }
-  .upload-icon { font-size: 36px; margin-bottom: 12px; }
-  .upload-text { font-size: 15px; color: var(--text); margin-bottom: 4px; font-weight: 500; }
-  .upload-sub { font-size: 12px; color: var(--text-dim); }
+  /* Sidebar derecha: sticky en desktop */
+  .admin-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    position: sticky;
+    top: calc(56px + var(--space-lg));
+  }
+
+  /* ── PANELS ───────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+  }
+  .panel + .panel { margin-top: 0; }
+  .panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── UPLOAD ZONE ──────────────────────────────────── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: clamp(28px, 6vw, 44px) var(--space-md);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.05);
+  }
+  .upload-zone.uploading-active {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.05);
+    cursor: default;
+    pointer-events: none;
+  }
+  .upload-icon { font-size: clamp(28px, 5vw, 36px); margin-bottom: 10px; }
+  .upload-text { font-size: clamp(13px, 2.5vw, 15px); color: var(--text); margin-bottom: 4px; font-weight: 500; }
+  .upload-sub { font-size: clamp(10px, 2vw, 12px); color: var(--text-dim); }
   .upload-bar { height: 6px; background: var(--border); border-radius: 4px; margin-top: 16px; overflow: hidden; }
   .upload-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 4px; transition: width 0.4s ease; }
-  .upload-status { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .upload-status { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
   .upload-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: uploadPulse 1s infinite; flex-shrink: 0; }
   @keyframes uploadPulse { 0%,100% { transform: scale(1); opacity:1; } 50% { transform: scale(1.4); opacity:0.6; } }
-  .upload-filename { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .upload-filename { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .upload-percent { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; flex-shrink: 0; }
 
-  .media-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
-  .media-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 14px; 
-    background: var(--surface2); 
-    border: 1px solid var(--border); 
-    border-radius: 14px; 
-    padding: 14px 16px; 
-    cursor: grab; 
-    transition: all 0.25s ease; 
+  /* ── MEDIA LIST ───────────────────────────────────── */
+  .media-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+
+  .media-item {
+    display: grid;
+    /* handle | num | thumb | info | dur | del */
+    grid-template-columns: auto auto 64px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+    cursor: grab;
+    transition: border-color 0.2s, background 0.2s;
     position: relative;
   }
   .media-item:hover { border-color: var(--accent); }
   .media-item.dragging { opacity: 0.4; }
-  .media-item.drag-over { border-color: var(--accent2); background: rgba(255,101,132,0.05); }
+  .media-item.drag-over { border-color: var(--accent2); background: rgba(255,101,132,0.06); }
 
-  .drag-handle { color: var(--text-dim); font-size: 20px; cursor: grab; flex-shrink: 0; padding: 4px 6px; }
-  .media-thumb { width: 64px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
-  .media-thumb-video { width: 64px; height: 48px; border-radius: 10px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; }
-  .media-info { flex: 1; min-width: 0; }
-  .media-name { font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .media-type { font-size: 11.5px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .drag-handle { color: var(--text-dim); font-size: 18px; cursor: grab; line-height: 1; padding: 2px 4px; }
+  .media-index { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-dim); min-width: 14px; text-align: center; }
+  .media-thumb { width: 64px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; background: var(--bg); display: block; }
+  .media-thumb-video { width: 64px; height: 48px; border-radius: var(--radius-sm); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .media-info { min-width: 0; }
+  .media-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media-type { font-size: 10px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
 
-  .media-duration { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .dur-btn { 
-    width: 34px; 
-    height: 34px; 
-    border-radius: 8px; 
-    border: 1px solid var(--border); 
-    background: var(--surface); 
-    color: var(--text); 
-    cursor: pointer; 
-    font-size: 15px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.2s; 
+  .media-duration { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .dur-btn {
+    width: 30px; height: 30px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
   }
   .dur-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .dur-val { font-family: 'Space Mono', monospace; font-size: 14.5px; min-width: 42px; text-align: center; }
+  .dur-val { font-family: 'Space Mono', monospace; font-size: 13px; min-width: 36px; text-align: center; }
 
-  .del-btn { 
-    width: 32px; 
-    height: 32px; 
-    border-radius: 8px; 
-    border: none; 
-    background: transparent; 
-    color: var(--text-dim); 
-    cursor: pointer; 
-    font-size: 18px; 
-    transition: all 0.2s; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
+  .del-btn {
+    width: 30px; height: 30px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s, color 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
   }
   .del-btn:hover { background: rgba(255,95,126,0.15); color: var(--danger); }
 
-  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  /* ── SETTINGS ─────────────────────────────────────── */
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border);
+  }
   .setting-row:last-child { border-bottom: none; }
-  .setting-label { font-size: 14px; }
-  .setting-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-  .toggle { width: 44px; height: 24px; background: var(--border); border-radius: 12px; cursor: pointer; position: relative; transition: background 0.2s; border: none; }
+  .setting-label { font-size: 14px; font-weight: 500; }
+  .setting-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.4; }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    border: none;
+    flex-shrink: 0;
+  }
   .toggle.on { background: var(--accent); }
   .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: left 0.2s; }
   .toggle.on::after { left: 23px; }
-  .num-input { width: 70px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 13px; padding: 6px 10px; text-align: center; }
+  .num-input {
+    width: 68px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .num-input:focus { outline: none; border-color: var(--accent); }
 
-  .screens-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-  .screen-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; cursor: pointer; transition: all 0.2s; }
-  .screen-item.active { border-color: var(--success); background: rgba(67,217,160,0.08); }
-  .screen-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); margin: 0 auto 6px; }
-  .screen-item.active .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  /* ── SHORTCUTS ────────────────────────────────────── */
+  .shortcut-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .shortcut-item:last-child { border-bottom: none; }
+  .key {
+    font-family: 'Space Mono', monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
 
-  .btn-primary { width: 100%; padding: 13px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--accent), #8b5cf6); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 16px; }
+  /* ── BUTTONS ──────────────────────────────────────── */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(108,99,255,0.3); }
   .btn-primary:active { transform: translateY(0); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
 
-  /* KIOSK */
-  .kiosk-wrap {
-    position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
-    background: #000 !important; z-index: 99999 !important; overflow: hidden !important;
-    display: flex !important; align-items: center !important; justify-content: center !important;
+  /* ── MISC ─────────────────────────────────────────── */
+  .empty { text-align: center; padding: clamp(28px, 6vw, 44px) 20px; color: var(--text-dim); }
+  .empty-icon { font-size: 38px; margin-bottom: 12px; }
+  .demo-banner {
+    background: rgba(255,179,71,0.1);
+    border: 1px solid rgba(255,179,71,0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: var(--space-md);
+    font-size: 12px;
+    color: var(--warning);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
   }
-  .kiosk-wrap img, .kiosk-wrap video {
-    display: block !important; max-width: 100vw !important; max-height: 100vh !important;
-    width: auto !important; height: auto !important; flex-shrink: 1 !important;
-  }
-
-  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: 14px; z-index: 999999; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); animation: slideUp 0.3s ease; white-space: nowrap; }
-  @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-
-  .empty { text-align: center; padding: 40px 20px; color: var(--text-dim); }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; }
-  .demo-banner { background: rgba(255,179,71,0.1); border: 1px solid rgba(255,179,71,0.3); border-radius: 10px; padding: 10px 16px; margin-bottom: 20px; font-size: 13px; color: var(--warning); display: flex; align-items: center; gap: 8px; }
-  .shortcut-item { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .shortcut-item:last-child { border-bottom: none; }
-  .key { font-family: 'Space Mono', monospace; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 11px; color: var(--accent); }
   .realtime-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .saving-row { display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--success); padding: 4px 0; }
 
-  /* ==================== RESPONSIVE MOBILE ==================== */
-  @media (max-width: 1024px) {
-    .admin { grid-template-columns: 1fr; padding: 20px 16px; gap: 20px; }
+  .toast {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 20px;
+    font-size: 14px;
+    z-index: 999999;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: slideUp 0.3s ease;
+    white-space: nowrap;
+    max-width: calc(100vw - 32px);
   }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(16px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+  /* ── KIOSK ────────────────────────────────────────── */
+  .kiosk-wrap {
+    position: fixed !important; inset: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    background: #000 !important; z-index: 99999 !important;
+    overflow: hidden !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+  }
+
+  /* ══════════════════════════════════════════════════
+     RESPONSIVE — de grande a pequeño
+  ══════════════════════════════════════════════════ */
+
+  /* 1200px — layout de dos columnas normal */
+  @media (max-width: 1200px) {
+    .admin { grid-template-columns: 1fr 320px; gap: var(--space-md); }
+  }
+
+  /* 960px — sidebar pasa debajo del contenido principal */
+  @media (max-width: 960px) {
+    .admin {
+      grid-template-columns: 1fr;
+      padding: var(--space-md);
+    }
+    .admin-sidebar {
+      position: static; /* ya no sticky */
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+    /* El botón lanzar ocupa las dos columnas */
+    .admin-sidebar .btn-primary,
+    .admin-sidebar .saving-row { grid-column: 1 / -1; }
+  }
+
+  /* 640px — pantallas medianas tipo tablet portrait */
+  @media (max-width: 640px) {
+    .admin { padding: 14px 12px; gap: 14px; }
+    .admin-sidebar { grid-template-columns: 1fr; }
+    .panel { padding: 18px 16px; border-radius: var(--radius-md); }
+
+    /* Media items: layout de dos filas */
+    .media-item {
+      grid-template-columns: auto auto 56px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 10px 10px;
+      padding: 12px 12px;
+    }
+    /* Fila 1: handle | num | thumb | info | del */
+    .media-item .drag-handle  { grid-row: 1; grid-column: 1; }
+    .media-item .media-index  { grid-row: 1; grid-column: 2; }
+    .media-item .media-thumb,
+    .media-item .media-thumb-video { grid-row: 1; grid-column: 3; }
+    .media-item .media-info   { grid-row: 1; grid-column: 4; }
+    .media-item .del-btn      { grid-row: 1; grid-column: 5; }
+    /* Fila 2: duración ocupa todo el ancho */
+    .media-item .media-duration {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      justify-content: center;
+      gap: 10px;
+    }
+    .dur-btn { width: 36px; height: 36px; font-size: 18px; }
+    .dur-val { font-size: 14px; min-width: 44px; }
+    .del-btn { width: 34px; height: 34px; }
+
+    .media-thumb, .media-thumb-video { width: 56px; height: 42px; }
+
+    .setting-label { font-size: 13px; }
+    .setting-sub { font-size: 10px; }
+  }
+
+  /* 480px — mobile estándar */
   @media (max-width: 480px) {
-    .media-item { padding: 14px; gap: 12px; flex-wrap: wrap; border-radius: 16px; }
-    .media-thumb, .media-thumb-video { width: 72px; height: 54px; border-radius: 12px; }
-    .media-info { flex: 1 1 100%; margin-top: 4px; }
-    .media-duration { margin-top: 8px; width: 100%; justify-content: center; gap: 12px; }
-    .dur-btn { width: 42px; height: 42px; font-size: 18px; }
-    .dur-val { font-size: 16px; min-width: 50px; }
-    .del-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; font-size: 17px; }
-    .drag-handle { font-size: 22px; }
+    .nav { padding: 0 14px; height: 52px; }
+    .nav-logo { font-size: 11px; letter-spacing: 1.5px; }
+    .screen-badge { padding: 2px 8px; font-size: 9px; }
+
+    .admin { padding: 12px 10px; gap: 12px; }
+    .panel { padding: 16px 14px; border-radius: var(--radius-md); }
+    .panel-title { font-size: 10px; margin-bottom: 14px; }
+
+    .upload-zone { padding: 24px 12px; }
+    .upload-icon { font-size: 28px; }
+    .upload-text { font-size: 13px; }
+    .upload-sub { font-size: 10px; }
+
+    .media-item { padding: 10px 10px; gap: 8px; border-radius: var(--radius-md); }
+    .media-name { font-size: 12px; }
+    .media-type { font-size: 9px; }
+    .drag-handle { font-size: 16px; }
+
+    .btn-primary { font-size: 14px; padding: 13px; border-radius: var(--radius-md); }
+    .demo-banner { font-size: 11px; }
+  }
+
+  /* 360px — móviles muy pequeños */
+  @media (max-width: 360px) {
+    .admin { padding: 10px 8px; gap: 10px; }
+    .panel { padding: 14px 12px; }
+    .media-item { padding: 10px 8px; }
+    .nav-logo { display: none; } /* oculta logo en pantallas tiny */
+    .nav { justify-content: flex-end; }
+  }
+
+  /* ── Touch: agrandar targets táctiles ────────────── */
+  @media (hover: none) and (pointer: coarse) {
+    .dur-btn { width: 40px; height: 40px; }
+    .del-btn { width: 38px; height: 38px; }
+    .toggle { width: 48px; height: 26px; }
+    .toggle::after { width: 20px; height: 20px; }
+    .toggle.on::after { left: 24px; }
+    .btn-primary { padding: 16px; font-size: 16px; }
   }
 `;
 
@@ -238,6 +514,9 @@ async function syncCache(newItems, oldItems = []) {
   }
 }
 
+// =====================================================
+// KIOSK VIEW
+// =====================================================
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -273,7 +552,6 @@ function KioskView({ items, onExit }) {
       const result = {};
       for (const item of items) {
         if (cancelled) break;
-        // FIX: saltamos videos
         if (item.type === "video") continue;
         if (item.url?.startsWith("http")) {
           const local = await getCachedUrl(item.url);
@@ -293,7 +571,6 @@ function KioskView({ items, onExit }) {
     };
   }, []);
 
-  // ── Forzar tamaño ────────────────────────────────────────────────────────────
   const forceSize = useCallback((el) => {
     if (!el) return;
     el.removeAttribute("width");
@@ -334,7 +611,6 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("resize", onResize);
   }, [isVideo, forceSize]);
 
-  // ── Fullscreen ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onChange);
@@ -349,7 +625,6 @@ function KioskView({ items, onExit }) {
     if (document.fullscreenElement) document.exitFullscreen?.();
   }, []);
 
-  // ── Navegación ───────────────────────────────────────────────────────────────
   const goTo = useCallback((i) => {
     setPaused(false);
     setShowControls(false);
@@ -367,7 +642,6 @@ function KioskView({ items, onExit }) {
   const nextRef = useRef(null);
   useEffect(() => { nextRef.current = next; }, [next]);
 
-  // ── Timer imágenes ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!current || isVideo) return;
     clearTimeout(timerRef.current);
@@ -406,16 +680,11 @@ function KioskView({ items, onExit }) {
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !isVideo) return;
-
     const onEnd = () => { setSpeed2x(false); nextRef.current?.(); };
     const onTime = () => { if (v.duration) setProgress((v.currentTime / v.duration) * 100); };
-
     v.addEventListener("ended", onEnd);
     v.addEventListener("timeupdate", onTime);
-    return () => {
-      v.removeEventListener("ended", onEnd);
-      v.removeEventListener("timeupdate", onTime);
-    };
+    return () => { v.removeEventListener("ended", onEnd); v.removeEventListener("timeupdate", onTime); };
   }, [idx, isVideo]);
 
   const seekTo = (pct) => {
@@ -445,7 +714,6 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("contextmenu", block);
   }, []);
 
-  // ── Teclado ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       switch (e.key) {
@@ -467,7 +735,6 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("keydown", handler);
   }, [next, prev, goFirst, onExit, isFullscreen, showControls, isVideo]);
 
-  // ── Gestos táctiles ──────────────────────────────────────────────────────────
   useEffect(() => {
     let gestureStartTouches = [];
     let doubleTapTimer = null;
@@ -565,6 +832,7 @@ function KioskView({ items, onExit }) {
       clearTimeout(longPressTimer);
       clearTimeout(doubleTapTimer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, isVideo, isFullscreen]);
 
   if (!items.length) return (
@@ -581,7 +849,6 @@ function KioskView({ items, onExit }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#000", zIndex: 99999, overflow: "hidden", margin: 0, padding: 0 }}>
-
       {isVideo ? (
         <video
           key={currentUrl}
@@ -605,66 +872,26 @@ function KioskView({ items, onExit }) {
       )}
 
       {isLoading && (
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "#000",
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          gap: 20, zIndex: 50, pointerEvents: "none",
-        }}>
-          {/* Spinner */}
-          <div style={{
-            width: 56, height: 56,
-            border: "4px solid rgba(108,99,255,0.25)",
-            borderTopColor: "#6c63ff",
-            borderRadius: "50%",
-            animation: "kioskSpin 0.9s linear infinite",
-          }} />
-          <div style={{
-            color: "rgba(255,255,255,0.85)",
-            fontFamily: "'Space Mono', monospace",
-            fontSize: 15,
-            letterSpacing: "0.08em",
-          }}>Cargando presentación…</div>
-
-          <style>{`
-            @keyframes kioskSpin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
+        <div style={{ position: "absolute", inset: 0, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, zIndex: 50, pointerEvents: "none" }}>
+          <div style={{ width: 56, height: 56, border: "4px solid rgba(108,99,255,0.25)", borderTopColor: "#6c63ff", borderRadius: "50%", animation: "kioskSpin 0.9s linear infinite" }} />
+          <div style={{ color: "rgba(255,255,255,0.85)", fontFamily: "'Space Mono', monospace", fontSize: 15, letterSpacing: "0.08em" }}>Cargando presentación…</div>
+          <style>{`@keyframes kioskSpin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
 
       {speed2x && (
-        <div style={{
-          position: "absolute", top: 24, left: "50%", transform: "translateX(-50%)",
-          background: "rgba(108,99,255,0.85)", color: "#fff", borderRadius: 10,
-          padding: "8px 20px", fontFamily: "'Space Mono', monospace",
-          fontSize: 18, fontWeight: 700, zIndex: 10, pointerEvents: "none",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-        }}>⚡ ×2</div>
+        <div style={{ position: "absolute", top: 24, left: "50%", transform: "translateX(-50%)", background: "rgba(108,99,255,0.85)", color: "#fff", borderRadius: 10, padding: "8px 20px", fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, zIndex: 10, pointerEvents: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>⚡ ×2</div>
       )}
 
       {showControls && (
-        <div style={{
-          position: "absolute", bottom: 28, left: "50%", transform: "translateX(-50%)",
-          background: "rgba(10,10,20,0.85)", border: "1px solid rgba(108,99,255,0.4)",
-          borderRadius: 16, padding: "16px 24px", zIndex: 20,
-          display: "flex", flexDirection: "column", gap: 14,
-          width: "min(480px, 90vw)", backdropFilter: "blur(12px)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        }}>
+        <div style={{ position: "absolute", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "rgba(10,10,20,0.85)", border: "1px solid rgba(108,99,255,0.4)", borderRadius: 16, padding: "16px 24px", zIndex: 20, display: "flex", flexDirection: "column", gap: 14, width: "min(480px, 90vw)", backdropFilter: "blur(12px)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
           <div
             style={{ height: 8, background: "rgba(255,255,255,0.15)", borderRadius: 4, cursor: "pointer", position: "relative" }}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const pct = (e.clientX - rect.left) / rect.width;
               if (isVideo) seekTo(Math.max(0, Math.min(1, pct)));
-              else {
-                const dur = (current.duration || 5) * 1000;
-                pausedAtRef.current = dur * Math.max(0, Math.min(1, pct));
-                setProgress(pct * 100);
-              }
+              else { const dur = (current.duration || 5) * 1000; pausedAtRef.current = dur * Math.max(0, Math.min(1, pct)); setProgress(pct * 100); }
             }}
             onTouchEnd={(e) => {
               e.stopPropagation();
@@ -675,39 +902,14 @@ function KioskView({ items, onExit }) {
             }}
           >
             <div style={{ height: "100%", width: progress + "%", background: "linear-gradient(90deg,#6c63ff,#ff6584)", borderRadius: 4, transition: "width 0.1s linear" }} />
-            <div style={{
-              position: "absolute", top: "50%", left: progress + "%",
-              transform: "translate(-50%,-50%)",
-              width: 16, height: 16, borderRadius: "50%", background: "#fff",
-              boxShadow: "0 0 8px rgba(108,99,255,0.8)",
-            }} />
+            <div style={{ position: "absolute", top: "50%", left: progress + "%", transform: "translate(-50%,-50%)", width: 16, height: 16, borderRadius: "50%", background: "#fff", boxShadow: "0 0 8px rgba(108,99,255,0.8)" }} />
           </div>
-
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }}
-              style={ctrlBtn}
-            >⏪ 10s</button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isVideo) { const v = videoRef.current; if (v) { v.paused ? v.play() : v.pause(); } }
-                setPaused(p => !p);
-              }}
-              style={{ ...ctrlBtn, fontSize: 22, width: 52, height: 52, borderRadius: "50%", background: "rgba(108,99,255,0.3)" }}
-            >{paused ? "▶" : "⏸"}</button>
-
-            <button
-              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10); }}
-              style={ctrlBtn}
-            >10s ⏩</button>
+            <button onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} style={ctrlBtn}>⏪ 10s</button>
+            <button onClick={(e) => { e.stopPropagation(); if (isVideo) { const v = videoRef.current; if (v) { v.paused ? v.play() : v.pause(); } } setPaused(p => !p); }} style={{ ...ctrlBtn, fontSize: 22, width: 52, height: 52, borderRadius: "50%", background: "rgba(108,99,255,0.3)" }}>{paused ? "▶" : "⏸"}</button>
+            <button onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10); }} style={ctrlBtn}>10s ⏩</button>
           </div>
-
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowControls(false); setPaused(false); if (isVideo) videoRef.current?.play(); }}
-            style={{ ...ctrlBtn, fontSize: 11, opacity: 0.6, alignSelf: "center" }}
-          >✕ Cerrar</button>
+          <button onClick={(e) => { e.stopPropagation(); setShowControls(false); setPaused(false); if (isVideo) videoRef.current?.play(); }} style={{ ...ctrlBtn, fontSize: 11, opacity: 0.6, alignSelf: "center" }}>✕ Cerrar</button>
         </div>
       )}
 
@@ -735,6 +937,9 @@ const ctrlBtn = {
   justifyContent: "center",
 };
 
+// =====================================================
+// ADMIN PANEL
+// =====================================================
 function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }) {
   const [drag, setDrag] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -758,8 +963,8 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-      if (!isImage && !isVideo) continue;
+      const isVideoFile = file.type.startsWith("video/");
+      if (!isImage && !isVideoFile) continue;
 
       setUploadingFile(file.name);
       setUploadProgress(0);
@@ -818,12 +1023,8 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
     if (supabase && item?.url?.includes(SUPABASE_URL)) {
       try {
         const parts = item.url.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`);
-        if (parts[1]) {
-          await supabase.storage.from(STORAGE_BUCKET).remove([parts[1]]);
-        }
-      } catch (err) {
-        console.error("Error eliminando archivo:", err);
-      }
+        if (parts[1]) await supabase.storage.from(STORAGE_BUCKET).remove([parts[1]]);
+      } catch (err) { console.error("Error eliminando archivo:", err); }
     }
     setItems(prev => prev.filter(it => it.id !== id));
     showToast("Eliminado", "🗑");
@@ -843,11 +1044,17 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
 
   return (
     <div className="admin">
-      <div>
+      {/* ── Columna principal ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
         {!supabase && (
-          <div className="demo-banner">⚠️ Modo demo — configura tus credenciales de Supabase para guardar en la nube</div>
+          <div className="demo-banner">
+            <span>⚠️</span>
+            <span>Modo demo — configura tus credenciales de Supabase para guardar en la nube</span>
+          </div>
         )}
-        <div className="panel" style={{ marginBottom: 20 }}>
+
+        {/* Upload */}
+        <div className="panel">
           <div className="panel-title">📂 Subir Contenido</div>
           <div
             className={`upload-zone ${drag ? "drag" : ""} ${uploading ? "uploading-active" : ""}`}
@@ -861,7 +1068,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
               <>
                 <div className="upload-icon">{uploadingFile.match(/\.(mp4|mov|avi|webm)$/i) ? "🎬" : "🖼️"}</div>
                 <div className="upload-text">Subiendo archivo...</div>
-                <div className="upload-bar" style={{ marginTop: 12 }}>
+                <div className="upload-bar">
                   <div className="upload-bar-fill" style={{ width: uploadProgress + "%" }} />
                 </div>
                 <div className="upload-status">
@@ -875,21 +1082,22 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
               <>
                 <div className="upload-icon">🖼️</div>
                 <div className="upload-text">Arrastra imágenes o videos aquí</div>
-                <div className="upload-sub">O haz clic para seleccionar • JPG, PNG, GIF, MP4, MOV</div>
+                <div className="upload-sub">O haz clic para seleccionar · JPG, PNG, GIF, MP4, MOV</div>
               </>
             )}
           </div>
         </div>
 
+        {/* Carousel list */}
         <div className="panel">
-          <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="panel-title">
             <span>🗂 Orden del Carrusel</span>
-            <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{items.length} elemento(s)</span>
+            <span style={{ color: "var(--text-dim)", fontSize: 11, fontFamily: "Space Mono", letterSpacing: 0 }}>{items.length} elemento{items.length !== 1 ? "s" : ""}</span>
           </div>
           {items.length === 0 ? (
             <div className="empty">
               <div className="empty-icon">📭</div>
-              <div>No hay contenido aún</div>
+              <div style={{ fontWeight: 500 }}>No hay contenido aún</div>
               <div style={{ fontSize: 12, marginTop: 6 }}>Sube imágenes o videos arriba</div>
             </div>
           ) : (
@@ -905,7 +1113,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                   onDragEnd={() => { setDraggingIdx(null); setDragOverIdx(null); }}
                 >
                   <span className="drag-handle">⋮⋮</span>
-                  <span style={{ fontFamily: "Space Mono", fontSize: 11, color: "var(--text-dim)", minWidth: 18 }}>{i + 1}</span>
+                  <span className="media-index">{i + 1}</span>
                   {item.type === "image" ? (
                     <img className="media-thumb" src={item.url} alt={item.title} />
                   ) : (
@@ -915,23 +1123,14 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                     <div className="media-name">{item.title}</div>
                     <div className="media-type">{item.type === "image" ? "IMAGEN" : "VIDEO"}</div>
                   </div>
+                  <button className="del-btn" onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}>✕</button>
                   {item.type === "image" && (
                     <div className="media-duration">
-                      <button
-                        className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
-                      >−</button>
+                      <button className="dur-btn" onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}>−</button>
                       <span className="dur-val">{item.duration || 5}s</span>
-                      <button
-                        className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
-                      >+</button>
+                      <button className="dur-btn" onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}>+</button>
                     </div>
                   )}
-                  <button
-                    className="del-btn"
-                    onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                  >✕</button>
                 </div>
               ))}
             </div>
@@ -939,39 +1138,58 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* ── Sidebar ── */}
+      <div className="admin-sidebar">
+        {/* Settings */}
         <div className="panel">
           <div className="panel-title">⚙️ Configuración</div>
           <div className="setting-row">
-            <div><div className="setting-label">Loop infinito</div><div className="setting-sub">Repite el carrusel automáticamente</div></div>
+            <div>
+              <div className="setting-label">Loop infinito</div>
+              <div className="setting-sub">Repite el carrusel automáticamente</div>
+            </div>
             <button className={`toggle ${settings.loop ? "on" : ""}`} onClick={() => setSettings(s => ({ ...s, loop: !s.loop }))} />
           </div>
           <div className="setting-row">
-            <div><div className="setting-label">Transición suave</div><div className="setting-sub">Fade entre elementos</div></div>
+            <div>
+              <div className="setting-label">Transición suave</div>
+              <div className="setting-sub">Fade entre elementos</div>
+            </div>
             <button className={`toggle ${settings.fade ? "on" : ""}`} onClick={() => setSettings(s => ({ ...s, fade: !s.fade }))} />
           </div>
           <div className="setting-row">
-            <div><div className="setting-label">Duración por defecto</div><div className="setting-sub">Para nuevas imágenes (seg.)</div></div>
-            <input className="num-input" type="number" min={1} max={60} value={settings.defaultDuration} onChange={(e) => setSettings(s => ({ ...s, defaultDuration: parseInt(e.target.value) || 5 }))} />
+            <div>
+              <div className="setting-label">Duración por defecto</div>
+              <div className="setting-sub">Para nuevas imágenes (seg.)</div>
+            </div>
+            <input className="num-input" type="number" min={1} max={60} value={settings.defaultDuration}
+              onChange={(e) => setSettings(s => ({ ...s, defaultDuration: parseInt(e.target.value) || 5 }))} />
           </div>
         </div>
 
+        {/* Shortcuts */}
         <div className="panel">
           <div className="panel-title">⌨️ Atajos de Teclado</div>
-          {[["L", "Ir al primer elemento"], ["→ ←", "Siguiente / Anterior"], ["F", "Pantalla completa"], ["ESC", "Salir de la pantalla completa"]].map(([key, desc]) => (
+          {[
+            ["L", "Ir al primer elemento"],
+            ["→ ←", "Siguiente / Anterior"],
+            ["F", "Pantalla completa"],
+            ["ESC", "Salir del kiosk"],
+          ].map(([key, desc]) => (
             <div key={key} className="shortcut-item">
               <span className="key">{key}</span>
-              <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{desc}</span>
+              <span style={{ color: "var(--text-dim)", fontSize: 12, textAlign: "right" }}>{desc}</span>
             </div>
           ))}
         </div>
 
+        {/* Launch */}
         <button className="btn-primary" onClick={onLaunch} disabled={items.length === 0}>
-          {items.length === 0 ? "Agrega contenido primero" : "▶ Lanzar Vista"}
+          {items.length === 0 ? "Agrega contenido primero" : "▶  Lanzar Vista"}
         </button>
 
         {saving && (
-          <div style={{ textAlign: "center", fontSize: 12, color: "var(--success)" }}>
+          <div className="saving-row">
             <span className="realtime-dot" />Guardando...
           </div>
         )}
@@ -981,6 +1199,10 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
     </div>
   );
 }
+
+// =====================================================
+// APP ROOT
+// =====================================================
 export default function App() {
   const [view, setView] = useState(() => window.location.hash === "#kiosk" ? "kiosk" : "admin");
 
@@ -992,16 +1214,11 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState({
-    loop: true,
-    fade: true,
-    defaultDuration: 5,
-    activeScreens: [0],
-  });
+  const [settings, setSettings] = useState({ loop: true, fade: true, defaultDuration: 5, activeScreens: [0] });
 
   const localVersionRef = useRef(null);
   const pendingSaveRef = useRef(null);
-  const isSavingRef = useRef(false); // ← NUEVO: flag para ignorar rebotes
+  const isSavingRef = useRef(false);
   const itemsRef = useRef(items);
   const settingsRef = useRef(settings);
   useEffect(() => { itemsRef.current = items; }, [items]);
@@ -1010,11 +1227,7 @@ export default function App() {
   useEffect(() => {
     if (!supabase) { setLoaded(true); return; }
     const load = async () => {
-      const { data } = await supabase
-        .from("ad_playlists")
-        .select("*")
-        .eq("id", "main")
-        .single();
+      const { data } = await supabase.from("ad_playlists").select("*").eq("id", "main").single();
       if (data) {
         if (data.items) setItems(data.items);
         if (data.settings) setSettings(data.settings);
@@ -1027,62 +1240,33 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !loaded || items.length === 0) return;
-
     setSaving(true);
     if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
-
     pendingSaveRef.current = setTimeout(async () => {
-      // ← Activamos el flag ANTES de guardar
       isSavingRef.current = true;
-
       const now = new Date().toISOString();
-      const { error } = await supabase.from("ad_playlists").upsert({
-        id: "main",
-        items: itemsRef.current,
-        settings: settingsRef.current,
-        updated_at: now,
-      });
-
-      if (!error) {
-        localVersionRef.current = now;
-      }
-
+      const { error } = await supabase.from("ad_playlists").upsert({ id: "main", items: itemsRef.current, settings: settingsRef.current, updated_at: now });
+      if (!error) localVersionRef.current = now;
       setSaving(false);
       setTimeout(() => { isSavingRef.current = false; }, 3000);
-
     }, 800);
-
     return () => { if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current); };
   }, [items, settings, loaded]);
 
   useEffect(() => {
     if (!supabase) return;
-
     const channel = supabase
       .channel("playlist-changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
-        (payload) => {
-          if (!payload.new) return;
-
-          if (isSavingRef.current) return;
-
-          const serverVersion = payload.new.updated_at;
-          const myVersion = localVersionRef.current;
-
-          if (myVersion && serverVersion <= myVersion) return;
-
-          setItems(prev => {
-            syncCache(payload.new.items || [], prev);
-            return payload.new.items || [];
-          });
-          setSettings(payload.new.settings || {});
-          localVersionRef.current = serverVersion;
-        }
-      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" }, (payload) => {
+        if (!payload.new || isSavingRef.current) return;
+        const serverVersion = payload.new.updated_at;
+        const myVersion = localVersionRef.current;
+        if (myVersion && serverVersion <= myVersion) return;
+        setItems(prev => { syncCache(payload.new.items || [], prev); return payload.new.items || []; });
+        setSettings(payload.new.settings || {});
+        localVersionRef.current = serverVersion;
+      })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, []);
 
@@ -1090,10 +1274,7 @@ export default function App() {
     return (
       <>
         <style>{style}</style>
-        <KioskView
-          items={[...items].sort((a, b) => a.order - b.order)}
-          onExit={() => changeView("admin")}
-        />
+        <KioskView items={[...items].sort((a, b) => a.order - b.order)} onExit={() => changeView("admin")} />
       </>
     );
   }
@@ -1104,11 +1285,10 @@ export default function App() {
       <nav className="nav">
         <div className="nav-logo">San Francisco</div>
         <div className="nav-screens">
-          {supabase ? (
-            <div className="screen-badge"><span>Realtime activo</span></div>
-          ) : (
-            <div className="screen-badge">Sin Supabase</div>
-          )}
+          {supabase
+            ? <div className="screen-badge"><span className="realtime-dot" style={{ width: 6, height: 6, marginRight: 4 }} /><span>Realtime activo</span></div>
+            : <div className="screen-badge">Sin Supabase</div>
+          }
           <div className="screen-badge">{items.length} elementos</div>
         </div>
       </nav>
