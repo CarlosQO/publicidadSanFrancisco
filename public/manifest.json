@@ -2,7 +2,7 @@
     "name": "San Francisco Kiosk",
     "short_name": "SF Kiosk",
     "description": "Sistema de publicidad digital",
-    "start_url": "/",
+    "start_url": "/#kiosk",
     "scope": "/",
     "display": "fullscreen",
     "orientation": "landscape",
