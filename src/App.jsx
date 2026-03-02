@@ -687,9 +687,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                         className="dur-btn"
                         onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
                       >−</button>
-                      <span className="dur-val" key={`dur-${item.id}-${item.duration}`}>
-                        {item.duration || 5}s
-                      </span>
+                      <span className="dur-val">{item.duration || 5}s</span>
                       <button
                         className="dur-btn"
                         onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
