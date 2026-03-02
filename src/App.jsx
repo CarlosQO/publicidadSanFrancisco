@@ -241,24 +241,39 @@ async function syncCache(newItems, oldItems = []) {
 // =====================================================
 // KIOSK VIEW
 // =====================================================
-// =====================================================
-// KIOSK VIEW — Nuevas interacciones táctiles
-// =====================================================
+// Estilo base para botones de control
+// const ctrlBtn = {
+//   background: "rgba(255,255,255,0.08)",
+//   border: "1px solid rgba(255,255,255,0.15)",
+//   color: "#fff",
+//   borderRadius: 10,
+//   padding: "8px 16px",
+//   fontSize: 14,
+//   cursor: "pointer",
+//   fontFamily: "'DM Sans', sans-serif",
+//   fontWeight: 500,
+//   width: 80,
+//   height: 44,
+//   display: "flex",
+//   alignItems: "center",
+//   justifyContent: "center",
+// };
+
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [cachedUrls, setCachedUrls] = useState({});
   const [paused, setPaused] = useState(false);
-  const [showControls, setShowControls] = useState(false);  // barra de video
-  const [speed2x, setSpeed2x] = useState(false);           // velocidad x2
-  const [isFullscreen, setIsFullscreen] = useState(false);  // pantalla completa real
+  const [showControls, setShowControls] = useState(false);
+  const [speed2x, setSpeed2x] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const videoRef = useRef(null);
   const imgRef = useRef(null);
   const timerRef = useRef(null);
   const progressRef = useRef(null);
   const startTimeRef = useRef(null);
-  const pausedAtRef = useRef(0);     // cuánto tiempo llevaba cuando pausamos
+  const pausedAtRef = useRef(0);
   const blobUrlsRef = useRef([]);
 
   const current = items[idx];
@@ -361,21 +376,23 @@ function KioskView({ items, onExit }) {
     clearTimeout(timerRef.current);
     clearInterval(progressRef.current);
 
-    if (paused) return; // imagen pausada en x2 — no avanza
+    if (paused) return;
 
     startTimeRef.current = Date.now() - pausedAtRef.current;
-    const dur = (current.duration || 5) * 1000 * (speed2x ? 0.5 : 1);
-    const remaining = dur - pausedAtRef.current;
+    const totalDur = (current.duration || 5) * 1000;
+    const effectiveDur = speed2x ? totalDur * 0.5 : totalDur;
+    const elapsed = pausedAtRef.current;
+    const remaining = effectiveDur - (speed2x ? elapsed * 0.5 : elapsed);
 
     progressRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTimeRef.current;
-      setProgress(Math.min((elapsed / ((current.duration || 5) * 1000)) * 100, 100));
+      const e = Date.now() - startTimeRef.current;
+      setProgress(Math.min((e / totalDur) * 100, 100));
     }, 100);
 
     timerRef.current = setTimeout(() => {
       pausedAtRef.current = 0;
       next();
-    }, remaining);
+    }, Math.max(remaining, 100));
 
     return () => { clearTimeout(timerRef.current); clearInterval(progressRef.current); };
   }, [idx, items, paused, speed2x]);
@@ -407,6 +424,36 @@ function KioskView({ items, onExit }) {
     setProgress(pct * 100);
   };
 
+  // ── Bloquear scroll y overflow ───────────────────────────────────────────────
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
+
+  // ── FIX 1: Bloquea touch-action para evitar zoom/gestos del SO ──────────────
+  useEffect(() => {
+    const el = document.documentElement;
+    el.style.touchAction = "none";
+    el.style.overscrollBehavior = "none";
+    el.style.userSelect = "none";
+    return () => {
+      el.style.touchAction = "";
+      el.style.overscrollBehavior = "";
+      el.style.userSelect = "";
+    };
+  }, []);
+
+  // ── FIX 2: Bloquea menú contextual de Windows (doble tap 2 dedos) ───────────
+  useEffect(() => {
+    const block = (e) => e.preventDefault();
+    window.addEventListener("contextmenu", block);
+    return () => window.removeEventListener("contextmenu", block);
+  }, []);
+
   // ── Teclado ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
@@ -433,27 +480,16 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("keydown", handler);
   }, [next, prev, goFirst, onExit, isFullscreen, showControls, isVideo]);
 
-  // ── Bloquear scroll ──────────────────────────────────────────────────────────
+  // ── FIX 3: Gestos táctiles con passive:false + preventDefault ───────────────
   useEffect(() => {
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; document.documentElement.style.overflow = ""; };
-  }, []);
-
-  // =====================================================================
-  // 🖐 GESTOS TÁCTILES — lógica completa nueva
-  // =====================================================================
-  useEffect(() => {
-    // Estado interno del gesto
-    let gestureStartTouches = [];  // snapshot al inicio
+    let gestureStartTouches = [];
     let doubleTapTimer = null;
-    let tapCount = 0;              // conteo de taps de 2 dedos
-    let tapZone = null;            // "left" | "center" | "right"
+    let tapCount = 0;
+    let tapZone = null;
     let longPressTimer = null;
-    let speed2xActive = false;     // estado local para limpiar al soltar
-    let gestureStartDist = null;   // distancia inicial para pinch de 4 dedos
+    let speed2xActive = false;
+    let gestureStartDist = null;
 
-    // Zona de toque (izquierda 30% | centro 40% | derecha 30%)
     const getZone = (touches) => {
       const W = window.innerWidth;
       const avgX = Array.from(touches).reduce((s, t) => s + t.clientX, 0) / touches.length;
@@ -462,10 +498,8 @@ function KioskView({ items, onExit }) {
       return "center";
     };
 
-    // Distancia entre 2 puntos (para pinch)
     const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
-    // Distancia media entre todos los pares de 4 dedos
     const avgDist4 = (touches) => {
       const pts = Array.from(touches).slice(0, 4);
       let total = 0, count = 0;
@@ -477,10 +511,12 @@ function KioskView({ items, onExit }) {
     };
 
     const onTouchStart = (e) => {
+      // ⛔ CRÍTICO: bloquea zoom, menú contextual y gestos del SO/navegador
+      e.preventDefault();
+
       const n = e.touches.length;
       gestureStartTouches = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
 
-      // ── 4 dedos: preparar pinch fullscreen ───────────────────────────
       if (n === 4) {
         clearTimeout(longPressTimer);
         gestureStartDist = avgDist4(e.touches);
@@ -489,18 +525,15 @@ function KioskView({ items, onExit }) {
 
       gestureStartDist = null;
 
-      // ── 2 dedos ──────────────────────────────────────────────────────
       if (n === 2) {
         const zone = getZone(e.touches);
 
-        // Long-press zona centro → x2
         longPressTimer = setTimeout(() => {
           speed2xActive = true;
           setSpeed2x(true);
           navigator.vibrate?.(60);
         }, 600);
 
-        // Doble-tap de 2 dedos
         tapCount++;
         tapZone = zone;
 
@@ -519,7 +552,6 @@ function KioskView({ items, onExit }) {
             next();
             navigator.vibrate?.(15);
           } else {
-            // Centro: pausar + mostrar barra de control
             if (isVideo) {
               const v = videoRef.current;
               if (v) { v.paused ? v.play() : v.pause(); }
@@ -532,29 +564,27 @@ function KioskView({ items, onExit }) {
         return;
       }
 
-      // ── 1 dedo o 3 dedos: limpiar ────────────────────────────────────
       clearTimeout(longPressTimer);
     };
 
     const onTouchMove = (e) => {
-      // 4 dedos: detectar pinch mientras se mueve
+      // ⛔ Evita que Chrome haga zoom de página con pinch
+      e.preventDefault();
+
       if (e.touches.length === 4 && gestureStartDist !== null) {
         const currentDist = avgDist4(e.touches);
         const ratio = currentDist / gestureStartDist;
         if (ratio > 1.25) {
-          // Expandiendo → fullscreen
           enterFullscreen();
-          gestureStartDist = currentDist; // resetear para no disparar repetido
+          gestureStartDist = currentDist;
           navigator.vibrate?.(30);
         } else if (ratio < 0.75) {
-          // Contrayendo → salir fullscreen
           exitFullscreen();
           gestureStartDist = currentDist;
           navigator.vibrate?.(30);
         }
       }
 
-      // Si se mueven los dedos en zona centro con 2 dedos, cancelar long-press
       if (e.touches.length === 2) {
         const cur = Array.from(e.touches);
         const moved = cur.some((t, i) => {
@@ -566,23 +596,21 @@ function KioskView({ items, onExit }) {
     };
 
     const onTouchEnd = (e) => {
-      // Al soltar, si estaba x2 por long-press → quitar x2
+      e.preventDefault();
+
       if (speed2xActive && e.touches.length < 2) {
         speed2xActive = false;
         setSpeed2x(false);
         navigator.vibrate?.(20);
       }
-      if (e.touches.length < 2) {
-        clearTimeout(longPressTimer);
-      }
-      if (e.touches.length < 4) {
-        gestureStartDist = null;
-      }
+      if (e.touches.length < 2) clearTimeout(longPressTimer);
+      if (e.touches.length < 4) gestureStartDist = null;
     };
 
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("touchend", onTouchEnd);
+    // ⛔ passive:false es OBLIGATORIO — sin esto Chrome ignora preventDefault()
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd, { passive: false });
 
     return () => {
       window.removeEventListener("touchstart", onTouchStart);
@@ -594,12 +622,14 @@ function KioskView({ items, onExit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, isVideo, isFullscreen]);
 
-  // ── Sin contenido ─────────────────────────────────────────────────────────
+  // ── Sin contenido ────────────────────────────────────────────────────────────
   if (!items.length) return (
     <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, zIndex: 99999 }}>
       <div style={{ fontSize: 48 }}>📺</div>
       <div style={{ color: "white", fontSize: 24 }}>No hay contenido configurado</div>
-      <button onClick={onExit} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "10px 24px", borderRadius: 8, cursor: "pointer", marginTop: 8 }}>Volver al Admin</button>
+      <button onClick={onExit} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "10px 24px", borderRadius: 8, cursor: "pointer", marginTop: 8 }}>
+        Volver al Admin
+      </button>
     </div>
   );
 
@@ -640,7 +670,7 @@ function KioskView({ items, onExit }) {
         }}>⚡ ×2</div>
       )}
 
-      {/* ── Barra de control (aparece al doble-tap centro) ── */}
+      {/* ── Barra de control ── */}
       {showControls && (
         <div style={{
           position: "absolute", bottom: 28, left: "50%", transform: "translateX(-50%)",
@@ -658,14 +688,10 @@ function KioskView({ items, onExit }) {
               const pct = (e.clientX - rect.left) / rect.width;
               if (isVideo) seekTo(Math.max(0, Math.min(1, pct)));
               else {
-                // Para imagen: salta a un % del tiempo total
                 const dur = (current.duration || 5) * 1000;
                 pausedAtRef.current = dur * Math.max(0, Math.min(1, pct));
                 setProgress(pct * 100);
               }
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
             }}
             onTouchEnd={(e) => {
               e.stopPropagation();
@@ -676,7 +702,6 @@ function KioskView({ items, onExit }) {
             }}
           >
             <div style={{ height: "100%", width: progress + "%", background: "linear-gradient(90deg,#6c63ff,#ff6584)", borderRadius: 4, transition: "width 0.1s linear" }} />
-            {/* Thumb */}
             <div style={{
               position: "absolute", top: "50%", left: progress + "%",
               transform: "translate(-50%,-50%)",
@@ -685,15 +710,13 @@ function KioskView({ items, onExit }) {
             }} />
           </div>
 
-          {/* Botones de control */}
+          {/* Botones */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
-            {/* ← 10s */}
             <button
-              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) { videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); } }}
+              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }}
               style={ctrlBtn}
             >⏪ 10s</button>
 
-            {/* Play/Pause */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -706,14 +729,12 @@ function KioskView({ items, onExit }) {
               style={{ ...ctrlBtn, fontSize: 22, width: 52, height: 52, borderRadius: "50%", background: "rgba(108,99,255,0.3)" }}
             >{paused ? "▶" : "⏸"}</button>
 
-            {/* +10s */}
             <button
-              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) { videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10); } }}
+              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10); }}
               style={ctrlBtn}
             >10s ⏩</button>
           </div>
 
-          {/* Cerrar barra */}
           <button
             onClick={(e) => { e.stopPropagation(); setShowControls(false); setPaused(false); if (isVideo) videoRef.current?.play(); }}
             style={{ ...ctrlBtn, fontSize: 11, opacity: 0.6, alignSelf: "center" }}
