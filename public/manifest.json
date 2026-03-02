@@ -1,6 +1,6 @@
 {
     "name": "San Francisco Kiosk",
-    "short_name": "SF Kiosk",
+    "short_name": "SF Publicidad",
     "description": "Sistema de publicidad digital",
     "start_url": "/#kiosk",
     "scope": "/",
@@ -13,13 +13,19 @@
             "src": "/favicon.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
             "src": "/favicon.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ]
 }

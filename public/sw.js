@@ -21,13 +21,9 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
 
-    // Solo GET
     if (event.request.method !== "GET") return;
-
-    // API de Supabase (no storage) → nunca cachear
     if (url.hostname.includes("supabase.co") && !url.pathname.includes("/storage/")) return;
 
-    // Media de Supabase Storage → Cache-First
     if (url.hostname.includes("supabase.co") && url.pathname.includes("/storage/")) {
         event.respondWith(
             caches.open(CACHE_VERSION).then(async (cache) => {
@@ -36,7 +32,6 @@ self.addEventListener("fetch", (event) => {
 
                 const response = await fetch(event.request);
                 if (response.ok) {
-                    // ✅ Clonar ANTES de usar — el original va al cache, el clon al navegador
                     const toCache = response.clone();
                     cache.put(event.request, toCache);
                 }
@@ -46,12 +41,10 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // Shell de la app → Network-First
     event.respondWith(
         fetch(event.request)
             .then((response) => {
                 if (response.ok && response.status < 400) {
-                    // ✅ Clonar ANTES de retornar
                     const toCache = response.clone();
                     caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, toCache));
                 }
