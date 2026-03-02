@@ -574,7 +574,16 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
   };
 
   const updateDuration = (id, delta) => {
-    setItems(prev => prev.map(it => it.id === id ? { ...it, duration: Math.max(1, (it.duration || 5) + delta) } : it));
+    setItems(currentItems =>
+      currentItems.map(it => {
+        if (it.id === id) {
+          // Forzamos que la base sea un número real para evitar errores de tipo en móviles
+          const currentDur = parseInt(it.duration) || 5;
+          return { ...it, duration: Math.max(1, currentDur + delta) };
+        }
+        return it;
+      })
+    );
   };
 
   const removeItem = async (id) => {
@@ -681,16 +690,28 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                     <div className="media-name">{item.title}</div>
                     <div className="media-type">{item.type === "image" ? "IMAGEN" : "VIDEO"}</div>
                   </div>
+                  // Localiza el mapeo de items y busca el div de duración
                   {item.type === "image" && (
                     <div className="media-duration">
                       <button
                         className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Evita conflictos con el drag & drop
+                          updateDuration(item.id, -1);
+                        }}
                       >−</button>
-                      <span className="dur-val">{item.duration || 5}s</span>
+
+                      {/* Asegúrate de que este span use el valor directo del item del estado */}
+                      <span className="dur-val" key={`dur-${item.id}-${item.duration}`}>
+                        {item.duration}s
+                      </span>
+
                       <button
                         className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateDuration(item.id, 1);
+                        }}
                       >+</button>
                     </div>
                   )}
