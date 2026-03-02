@@ -801,11 +801,10 @@ export default function App() {
 
   // 2. Modifica el useEffect de guardado así:
   useEffect(() => {
-    if (!supabase || !loaded) return;
+    // AGREGAR: items.length === 0 para evitar que el objeto vacío sobrescriba la DB
+    if (!supabase || !loaded || items.length === 0) return;
 
     setSaving(true);
-
-    // ¡IMPORTANTE! Avisamos que acabamos de hacer un cambio manual
     lastLocalUpdate.current = Date.now();
 
     const save = async () => {
@@ -818,7 +817,7 @@ export default function App() {
       setSaving(false);
     };
 
-    const t = setTimeout(save, 800);
+    const t = setTimeout(save, 1000); // Un poco más de tiempo para móviles
     return () => clearTimeout(t);
   }, [items, settings, loaded]);
 
