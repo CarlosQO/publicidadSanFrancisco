@@ -849,9 +849,6 @@ export default function App() {
       <style>{style}</style>
       <nav className="nav">
         <div className="nav-logo">San Francisco</div>
-        <div className="nav-tabs">
-          <button className="nav-tab active">Admin</button>
-        </div>
         <div className="nav-screens">
           {supabase ? (
             <div className="screen-badge"><span className="realtime-dot" /><span>Realtime activo</span></div>
