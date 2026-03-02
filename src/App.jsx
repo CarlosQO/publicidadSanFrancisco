@@ -731,12 +731,12 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
         </div>
 
         <button className="btn-primary" onClick={onLaunch} disabled={items.length === 0}>
-          {items.length === 0 ? "Agrega contenido primero" : "▶ Lanzar Vista Kiosko"}
+          {items.length === 0 ? "Agrega contenido primero" : "▶ Lanzar Vista"}
         </button>
 
         {saving && (
           <div style={{ textAlign: "center", fontSize: 12, color: "var(--success)" }}>
-            <span className="realtime-dot" />Guardando en Supabase...
+            <span className="realtime-dot" />Guardando...
           </div>
         )}
       </div>
