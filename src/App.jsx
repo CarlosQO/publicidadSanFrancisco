@@ -245,6 +245,7 @@ function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [cachedUrls, setCachedUrls] = useState({});
+  const lastLocalUpdate = useRef(0);
   const videoRef = useRef(null);
   const imgRef = useRef(null);
   const timerRef = useRef(null);
@@ -795,13 +796,28 @@ export default function App() {
     load();
   }, []);
 
+  // 1. Agrega esta referencia al inicio de tu componente App (junto a los otros useRef)
+  // const lastLocalUpdate = useRef(0);
+
+  // 2. Modifica el useEffect de guardado así:
   useEffect(() => {
     if (!supabase || !loaded) return;
+
     setSaving(true);
+
+    // ¡IMPORTANTE! Avisamos que acabamos de hacer un cambio manual
+    lastLocalUpdate.current = Date.now();
+
     const save = async () => {
-      await supabase.from("ad_playlists").upsert({ id: "main", items, settings, updated_at: new Date().toISOString() });
+      await supabase.from("ad_playlists").upsert({
+        id: "main",
+        items,
+        settings,
+        updated_at: new Date().toISOString()
+      });
       setSaving(false);
     };
+
     const t = setTimeout(save, 800);
     return () => clearTimeout(t);
   }, [items, settings, loaded]);
@@ -814,8 +830,23 @@ export default function App() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
         (payload) => {
+          // --- AQUÍ ESTÁ EL TRUCO PARA EL TIEMPO REAL ---
+          // Calculamos cuánto tiempo pasó desde nuestro último clic
+          const timeSinceMyLastChange = Date.now() - lastLocalUpdate.current;
+
+          // Si yo cambié algo hace menos de 2.5 segundos, ignoro lo que diga el servidor
+          // porque probablemente sea un dato "viejo" que viene de camino.
+          if (timeSinceMyLastChange < 2500) {
+            console.log("Ignorando rebote del servidor...");
+            return;
+          }
+
           if (payload.new) {
-            setItems(payload.new.items || []);
+            // Usamos el estado anterior para sincronizar el caché correctamente
+            setItems(prev => {
+              syncCache(payload.new.items || [], prev);
+              return payload.new.items || [];
+            });
             setSettings(payload.new.settings || {});
           }
         }
