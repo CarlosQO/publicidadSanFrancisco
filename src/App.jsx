@@ -723,23 +723,8 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
         </div>
 
         <div className="panel">
-          <div className="panel-title">📺 Pantallas Activas</div>
-          <div className="screens-grid">
-            {SCREENS.map((s, i) => (
-              <div key={i} className={`screen-item ${settings.activeScreens?.includes(i) ? "active" : ""}`}
-                onClick={() => setSettings(prev => {
-                  const active = prev.activeScreens || [];
-                  return { ...prev, activeScreens: active.includes(i) ? active.filter(x => x !== i) : [...active, i] };
-                })}>
-                <div className="dot" /><div>{s}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
           <div className="panel-title">⌨️ Atajos de Teclado</div>
-          {[["L", "Ir al primer elemento"], ["→ ←", "Siguiente / Anterior"], ["F", "Pantalla completa"], ["ESC", "Salir del kiosko"]].map(([key, desc]) => (
+          {[["L", "Ir al primer elemento"], ["→ ←", "Siguiente / Anterior"], ["F", "Pantalla completa"], ["ESC", "Salir de la pantalla completa"]].map(([key, desc]) => (
             <div key={key} className="shortcut-item">
               <span className="key">{key}</span>
               <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{desc}</span>
