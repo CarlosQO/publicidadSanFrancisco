@@ -244,7 +244,6 @@ async function syncCache(newItems, oldItems = []) {
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
-  // const lastLocalUpdate = useRef(0);
   const [cachedUrls, setCachedUrls] = useState({});
   const videoRef = useRef(null);
   const imgRef = useRef(null);
@@ -804,8 +803,7 @@ export default function App() {
     if (!supabase || !loaded) return;
 
     setSaving(true);
-
-    // ¡IMPORTANTE! Avisamos que acabamos de hacer un cambio manual
+    // Registramos que acabamos de hacer un cambio manual
     lastLocalUpdate.current = Date.now();
 
     const save = async () => {
@@ -830,23 +828,8 @@ export default function App() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
         (payload) => {
-          // --- AQUÍ ESTÁ EL TRUCO PARA EL TIEMPO REAL ---
-          // Calculamos cuánto tiempo pasó desde nuestro último clic
-          const timeSinceMyLastChange = Date.now() - lastLocalUpdate.current;
-
-          // Si yo cambié algo hace menos de 2.5 segundos, ignoro lo que diga el servidor
-          // porque probablemente sea un dato "viejo" que viene de camino.
-          if (timeSinceMyLastChange < 2500) {
-            console.log("Ignorando rebote del servidor...");
-            return;
-          }
-
           if (payload.new) {
-            // Usamos el estado anterior para sincronizar el caché correctamente
-            setItems(prev => {
-              syncCache(payload.new.items || [], prev);
-              return payload.new.items || [];
-            });
+            setItems(payload.new.items || []);
             setSettings(payload.new.settings || {});
           }
         }
