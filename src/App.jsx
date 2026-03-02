@@ -808,17 +808,23 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase) return;
-    const channel = supabase.channel("playlist")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ad_playlists" }, (payload) => {
-        if (payload.new?.items) {
-          setItems(prev => {
-            syncCache(payload.new.items, prev);
-            return payload.new.items;
-          });
+
+    const channel = supabase.channel("playlist-changes")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
+        (payload) => {
+          if (payload.new) {
+            setItems(payload.new.items || []);
+            setSettings(payload.new.settings || {});
+          }
         }
-        if (payload.new?.settings) setSettings(payload.new.settings);
-      }).subscribe();
-    return () => supabase.removeChannel(channel);
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   if (view === "kiosk") {
