@@ -37,7 +37,7 @@ const style = `
     --danger: #ff5f7e;
   }
 
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);}
 
   .app { min-height: 100vh; display: flex; flex-direction: column; }
   .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
@@ -604,8 +604,6 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
     setDraggingIdx(null);
     setDragOverIdx(null);
   };
-
-  const SCREENS = ["TV Sala", "TV Recepción", "TV Exterior", "Pantalla 4", "Pantalla 5", "Pantalla 6"];
 
   return (
     <div className="admin">
