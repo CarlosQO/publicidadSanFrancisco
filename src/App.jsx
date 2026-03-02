@@ -398,22 +398,25 @@ function KioskView({ items, onExit }) {
   }, [idx, items, paused, speed2x]);
 
   // ── Video: velocidad + progreso ──────────────────────────────────────────────
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.playbackRate = speed2x ? 2 : 1;
-  }, [speed2x, idx]);
+  const nextRef = useRef(next);
+  useEffect(() => { nextRef.current = next; }, [next]);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onEnd = () => { setSpeed2x(false); next(); };
+
+    // Usa nextRef.current en vez de next directamente
+    const onEnd = () => { setSpeed2x(false); nextRef.current(); };
     const onTime = () => {
       if (v.duration) setProgress((v.currentTime / v.duration) * 100);
     };
+
     v.addEventListener("ended", onEnd);
     v.addEventListener("timeupdate", onTime);
-    return () => { v.removeEventListener("ended", onEnd); v.removeEventListener("timeupdate", onTime); };
+    return () => {
+      v.removeEventListener("ended", onEnd);
+      v.removeEventListener("timeupdate", onTime);
+    };
   }, [idx]);
 
   // ── Seek en video ────────────────────────────────────────────────────────────
