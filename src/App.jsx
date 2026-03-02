@@ -13,7 +13,7 @@ try {
 } catch (e) { }
 
 // =====================================================
-// STYLES - Versión final con distribución mejorada
+// STYLES - Versión final mejorada para móvil
 // =====================================================
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
@@ -66,6 +66,127 @@ const style = `
     height: 100%;
   }
 
+  /* ==================== MEDIA LIST - MEJORADO PARA MÓVIL ==================== */
+  .media-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+  .media-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 14px; 
+    background: var(--surface2); 
+    border: 1px solid var(--border); 
+    border-radius: 14px; 
+    padding: 14px 16px; 
+    cursor: grab; 
+    transition: all 0.25s ease; 
+    position: relative;
+  }
+  .media-item:hover { 
+    border-color: var(--accent); 
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(108,99,255,0.12);
+  }
+  .media-item.dragging { opacity: 0.5; }
+
+  .drag-handle { 
+    color: var(--text-dim); 
+    font-size: 20px; 
+    cursor: grab; 
+    flex-shrink: 0; 
+    padding: 4px 6px;
+  }
+
+  .media-thumb { 
+    width: 64px; 
+    height: 48px; 
+    border-radius: 10px; 
+    object-fit: cover; 
+    flex-shrink: 0; 
+    background: #111; 
+    border: 1px solid var(--border);
+  }
+  .media-thumb-video { 
+    width: 64px; 
+    height: 48px; 
+    border-radius: 10px; 
+    flex-shrink: 0; 
+    background: #111; 
+    border: 1px solid var(--border);
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 22px; 
+  }
+
+  .media-info { flex: 1; min-width: 0; }
+  .media-name { 
+    font-size: 14.5px; 
+    font-weight: 500; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    line-height: 1.3;
+  }
+  .media-type { 
+    font-size: 11.5px; 
+    color: var(--text-dim); 
+    font-family: 'Space Mono', monospace; 
+    margin-top: 2px; 
+    letter-spacing: 0.5px;
+  }
+
+  .media-duration { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    flex-shrink: 0; 
+  }
+  .dur-btn { 
+    width: 34px; 
+    height: 34px; 
+    border-radius: 8px; 
+    border: 1px solid var(--border); 
+    background: var(--surface); 
+    color: var(--text); 
+    cursor: pointer; 
+    font-size: 15px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: all 0.2s; 
+    font-weight: 600;
+  }
+  .dur-btn:hover { 
+    border-color: var(--accent); 
+    color: var(--accent); 
+    background: rgba(108,99,255,0.1);
+  }
+  .dur-val { 
+    font-family: 'Space Mono', monospace; 
+    font-size: 14.5px; 
+    min-width: 42px; 
+    text-align: center; 
+    color: var(--text);
+  }
+
+  .del-btn { 
+    width: 32px; 
+    height: 32px; 
+    border-radius: 8px; 
+    border: none; 
+    background: transparent; 
+    color: var(--text-dim); 
+    cursor: pointer; 
+    font-size: 18px; 
+    transition: all 0.2s; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+  }
+  .del-btn:hover { 
+    background: rgba(255,95,126,0.15); 
+    color: var(--danger); 
+  }
+
   .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 24px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
   .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(108,99,255,0.05); }
   .upload-zone.uploading-active { border-color: var(--accent); background: rgba(108,99,255,0.05); cursor: default; pointer-events: none; }
@@ -80,24 +201,6 @@ const style = `
   .upload-filename { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .upload-percent { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; flex-shrink: 0; }
 
-  .media-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-  .media-item { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: grab; transition: all 0.2s; }
-  .media-item:hover { border-color: var(--accent); }
-  .media-item.dragging { opacity: 0.4; }
-  .media-item.drag-over { border-color: var(--accent2); background: rgba(255,101,132,0.05); }
-  .drag-handle { color: var(--text-dim); font-size: 18px; cursor: grab; flex-shrink: 0; }
-  .media-thumb { width: 56px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
-  .media-thumb-video { width: 56px; height: 40px; border-radius: 6px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .media-info { flex: 1; min-width: 0; }
-  .media-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .media-type { font-size: 11px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
-  .media-duration { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-  .dur-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-  .dur-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .dur-val { font-family: 'Space Mono', monospace; font-size: 13px; min-width: 32px; text-align: center; }
-  .del-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
-  .del-btn:hover { background: rgba(255,95,126,0.15); color: var(--danger); }
-
   .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
   .setting-label { font-size: 14px; }
@@ -108,18 +211,11 @@ const style = `
   .toggle.on::after { left: 23px; }
   .num-input { width: 70px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 13px; padding: 6px 10px; text-align: center; }
 
-  .screens-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-  .screen-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; cursor: pointer; transition: all 0.2s; }
-  .screen-item.active { border-color: var(--success); background: rgba(67,217,160,0.08); }
-  .screen-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); margin: 0 auto 6px; }
-  .screen-item.active .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
-
   .btn-primary { width: 100%; padding: 13px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--accent), #8b5cf6); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(108,99,255,0.3); }
   .btn-primary:active { transform: translateY(0); }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  /* KIOSK — NO TOCADO */
   .kiosk-wrap {
     position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
     background: #000 !important; z-index: 99999 !important; overflow: hidden !important;
@@ -146,27 +242,15 @@ const style = `
   @media (max-width: 1024px) {
     .admin { grid-template-columns: 1fr; padding: 20px 16px; gap: 20px; }
   }
-  @media (max-width: 768px) {
-    .nav { padding: 0 16px; height: auto; min-height: 56px; flex-wrap: wrap; gap: 12px; }
-    .nav-logo { font-size: 14px; }
-    .nav-screens { width: 100%; justify-content: center; gap: 6px; flex-wrap: wrap; }
-    .panel { padding: 20px 16px; }
-    .upload-zone { padding: 36px 20px; }
-    .media-item { padding: 9px 12px; gap: 10px; }
-    .media-thumb { width: 50px; height: 38px; }
-    .dur-btn { width: 24px; height: 24px; font-size: 13px; }
-    .dur-val { font-size: 12px; min-width: 28px; }
-    .screens-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .btn-primary { padding: 14px; font-size: 14.5px; }
-  }
   @media (max-width: 480px) {
-    .admin { padding: 12px 8px; gap: 14px; }
-    .upload-zone { padding: 28px 12px; }
-    .media-item { padding: 10px; gap: 8px; flex-wrap: wrap; }
+    .media-item { padding: 14px; gap: 12px; flex-wrap: wrap; border-radius: 16px; }
+    .media-thumb, .media-thumb-video { width: 72px; height: 54px; border-radius: 12px; }
     .media-info { flex: 1 1 100%; margin-top: 4px; }
-    .media-duration { margin-top: 6px; justify-content: flex-start; width: 100%; }
-    .del-btn { margin-left: auto; }
-    .screens-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+    .media-duration { margin-top: 8px; width: 100%; justify-content: center; gap: 10px; }
+    .dur-btn { width: 42px; height: 42px; font-size: 17px; }
+    .dur-val { font-size: 15.5px; min-width: 48px; }
+    .del-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; font-size: 17px; }
+    .drag-handle { font-size: 22px; padding: 6px; }
   }
 `;
 
@@ -223,7 +307,7 @@ async function syncCache(newItems, oldItems = []) {
 }
 
 // =====================================================
-// KIOSK VIEW (sin tocar)
+// KIOSK VIEW (completo)
 // =====================================================
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
@@ -475,7 +559,7 @@ function KioskView({ items, onExit }) {
 }
 
 // =====================================================
-// Componentes extraídos
+// COMPONENTES EXTRAÍDOS
 // =====================================================
 function UploadZone({ drag, setDrag, uploading, uploadingFile, uploadProgress, fileInputRef, handleFiles }) {
   return (
@@ -523,7 +607,7 @@ function MediaItem({ item, i, draggingIdx, dragOverIdx, onDragStart, onDragOver,
       onDragEnd={onDragEnd}
     >
       <span className="drag-handle">⋮⋮</span>
-      <span style={{ fontFamily: "Space Mono", fontSize: 11, color: "var(--text-dim)", minWidth: 18 }}>{i + 1}</span>
+      <span style={{ fontFamily: "Space Mono", fontSize: 12, color: "var(--text-dim)", minWidth: 20 }}>{i + 1}</span>
       {item.type === "image" ? (
         <img className="media-thumb" src={item.url} alt={item.title} />
       ) : (
@@ -535,12 +619,24 @@ function MediaItem({ item, i, draggingIdx, dragOverIdx, onDragStart, onDragOver,
       </div>
       {item.type === "image" && (
         <div className="media-duration">
-          <button className="dur-btn" onClick={() => updateDuration(item.id, -1)}>−</button>
+          <button
+            className="dur-btn"
+            draggable={false}
+            onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
+          >−</button>
           <span className="dur-val">{item.duration || 5}s</span>
-          <button className="dur-btn" onClick={() => updateDuration(item.id, 1)}>+</button>
+          <button
+            className="dur-btn"
+            draggable={false}
+            onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
+          >+</button>
         </div>
       )}
-      <button className="del-btn" onClick={() => removeItem(item.id)}>✕</button>
+      <button
+        className="del-btn"
+        draggable={false}
+        onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
+      >✕</button>
     </div>
   );
 }
@@ -580,7 +676,7 @@ function ShortcutsPanel() {
 }
 
 // =====================================================
-// ADMIN PANEL - Distribución mejorada
+// ADMIN PANEL
 // =====================================================
 function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }) {
   const [drag, setDrag] = useState(false);
@@ -690,7 +786,6 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
 
   return (
     <div className="admin">
-      {/* Columna izquierda */}
       <div>
         {!supabase && (
           <div className="demo-banner">⚠️ Modo demo — configura tus credenciales de Supabase para guardar en la nube</div>
@@ -742,7 +837,6 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
         </div>
       </div>
 
-      {/* Columna derecha - botón siempre abajo */}
       <div className="right-column">
         <ConfigurationPanel settings={settings} setSettings={setSettings} />
         <ShortcutsPanel />
