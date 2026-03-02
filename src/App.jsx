@@ -147,7 +147,7 @@ const style = `
   .btn-primary:active { transform: translateY(0); }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  /* KIOSK — NO TOCADO */
+  /* KIOSK */
   .kiosk-wrap {
     position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
     background: #000 !important; z-index: 99999 !important; overflow: hidden !important;
@@ -239,12 +239,11 @@ async function syncCache(newItems, oldItems = []) {
 }
 
 // =====================================================
-// KIOSK VIEW (sin tocar)
+// KIOSK VIEW
 // =====================================================
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
-  // const lastLocalUpdate = useRef(0);
   const [cachedUrls, setCachedUrls] = useState({});
   const videoRef = useRef(null);
   const imgRef = useRef(null);
@@ -756,6 +755,7 @@ export default function App() {
     window.location.hash = v === "kiosk" ? "kiosk" : "";
     setView(v);
   };
+
   const [items, setItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -766,71 +766,106 @@ export default function App() {
     activeScreens: [0],
   });
 
+  // ─── NUEVO: versión local para ignorar rebotes propios ───────────────────────
+  // Guardamos el `updated_at` del último guardado que nosotros mismos hicimos.
+  // El listener solo aplica cambios remotos si el `updated_at` del servidor
+  // es POSTERIOR a nuestra última escritura — así nunca pisamos nuestros datos.
+  const localVersionRef = useRef(null); // ISO string del último save propio
+  const pendingSaveRef = useRef(null);   // timeout actual del debounce
+
+  // ─── CARGA INICIAL ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) { setLoaded(true); return; }
     const load = async () => {
-      const { data } = await supabase.from("ad_playlists").select("*").eq("id", "main").single();
+      const { data } = await supabase
+        .from("ad_playlists")
+        .select("*")
+        .eq("id", "main")
+        .single();
       if (data) {
         if (data.items) setItems(data.items);
         if (data.settings) setSettings(data.settings);
+        // Inicializamos la versión local con lo que hay en la DB
+        localVersionRef.current = data.updated_at ?? null;
       }
       setLoaded(true);
     };
     load();
   }, []);
 
-  // 1. Agrega esta referencia al inicio de tu componente App (junto a los otros useRef)
-  const lastLocalUpdate = useRef(0);
+  // ─── GUARDADO con debounce ───────────────────────────────────────────────────
+  // Guardamos en un ref la función de guardado para tener siempre la versión
+  // fresca de `items` y `settings` sin que el useEffect se re-registre.
+  const itemsRef = useRef(items);
+  const settingsRef = useRef(settings);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
-  // 2. Modifica el useEffect de guardado así:
   useEffect(() => {
-    // AGREGAR: items.length === 0 para evitar que el objeto vacío sobrescriba la DB
     if (!supabase || !loaded || items.length === 0) return;
 
     setSaving(true);
-    lastLocalUpdate.current = Date.now();
 
-    const save = async () => {
-      await supabase.from("ad_playlists").upsert({
+    // Cancelamos el guardado anterior si el usuario sigue haciendo cambios
+    if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
+
+    pendingSaveRef.current = setTimeout(async () => {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("ad_playlists").upsert({
         id: "main",
-        items,
-        settings,
-        updated_at: new Date().toISOString()
+        items: itemsRef.current,
+        settings: settingsRef.current,
+        updated_at: now,
       });
-      setSaving(false);
-    };
 
-    const t = setTimeout(save, 1000); // Un poco más de tiempo para móviles
-    return () => clearTimeout(t);
+      if (!error) {
+        // Registramos la versión que acabamos de guardar.
+        // El listener comparará contra este timestamp.
+        localVersionRef.current = now;
+      }
+      setSaving(false);
+    }, 800);
+
+    return () => {
+      if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
+    };
   }, [items, settings, loaded]);
 
+  // ─── LISTENER REALTIME ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) return;
 
-    const channel = supabase.channel("playlist-changes")
+    const channel = supabase
+      .channel("playlist-changes")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
         (payload) => {
-          // --- AQUÍ ESTÁ EL TRUCO PARA EL TIEMPO REAL ---
-          // Calculamos cuánto tiempo pasó desde nuestro último clic
-          const timeSinceMyLastChange = Date.now() - lastLocalUpdate.current;
+          if (!payload.new) return;
 
-          // Si yo cambié algo hace menos de 2.5 segundos, ignoro lo que diga el servidor
-          // porque probablemente sea un dato "viejo" que viene de camino.
-          if (timeSinceMyLastChange < 2500) {
-            // console.log("Ignorando rebote del servidor...");
+          const serverVersion = payload.new.updated_at;
+          const myVersion = localVersionRef.current;
+
+          // ─── LÓGICA CLAVE ─────────────────────────────────────────────────
+          // Solo aplicamos el cambio remoto si el servidor tiene una versión
+          // MÁS NUEVA que la nuestra. Si el timestamp es igual o anterior,
+          // significa que somos nosotros mismos quienes guardamos eso,
+          // y lo ignoramos para no pisar nuestro estado local.
+          if (myVersion && serverVersion <= myVersion) {
+            // Es nuestro propio rebote — ignorar
             return;
           }
 
-          if (payload.new) {
-            // Usamos el estado anterior para sincronizar el caché correctamente
-            setItems(prev => {
-              syncCache(payload.new.items || [], prev);
-              return payload.new.items || [];
-            });
-            setSettings(payload.new.settings || {});
-          }
+          // Es un cambio de otro dispositivo — aplicar
+          setItems(prev => {
+            syncCache(payload.new.items || [], prev);
+            return payload.new.items || [];
+          });
+          setSettings(payload.new.settings || {});
+
+          // Actualizamos la versión local para que futuros rebotes
+          // de este mismo evento también sean ignorados correctamente
+          localVersionRef.current = serverVersion;
         }
       )
       .subscribe();
@@ -841,7 +876,15 @@ export default function App() {
   }, []);
 
   if (view === "kiosk") {
-    return <KioskView items={[...items].sort((a, b) => a.order - b.order)} onExit={() => changeView("admin")} />;
+    return (
+      <>
+        <style>{style}</style>
+        <KioskView
+          items={[...items].sort((a, b) => a.order - b.order)}
+          onExit={() => changeView("admin")}
+        />
+      </>
+    );
   }
 
   return (
@@ -858,7 +901,14 @@ export default function App() {
           <div className="screen-badge">{items.length} elementos</div>
         </div>
       </nav>
-      <AdminPanel items={items} setItems={setItems} settings={settings} setSettings={setSettings} onLaunch={() => changeView("kiosk")} saving={saving} />
+      <AdminPanel
+        items={items}
+        setItems={setItems}
+        settings={settings}
+        setSettings={setSettings}
+        onLaunch={() => changeView("kiosk")}
+        saving={saving}
+      />
     </div>
   );
 }
