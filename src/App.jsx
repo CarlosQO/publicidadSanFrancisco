@@ -1042,12 +1042,14 @@ export default function App() {
     activeScreens: [0],
   });
 
-  // ─── NUEVO: versión local para ignorar rebotes propios ───────────────────────
-  // Guardamos el `updated_at` del último guardado que nosotros mismos hicimos.
-  // El listener solo aplica cambios remotos si el `updated_at` del servidor
-  // es POSTERIOR a nuestra última escritura — así nunca pisamos nuestros datos.
-  const localVersionRef = useRef(null); // ISO string del último save propio
-  const pendingSaveRef = useRef(null);   // timeout actual del debounce
+  // ─── REFS de control ────────────────────────────────────────────────────────
+  const localVersionRef = useRef(null);
+  const pendingSaveRef = useRef(null);
+  const isSavingRef = useRef(false); // ← NUEVO: flag para ignorar rebotes
+  const itemsRef = useRef(items);
+  const settingsRef = useRef(settings);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   // ─── CARGA INICIAL ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1061,7 +1063,6 @@ export default function App() {
       if (data) {
         if (data.items) setItems(data.items);
         if (data.settings) setSettings(data.settings);
-        // Inicializamos la versión local con lo que hay en la DB
         localVersionRef.current = data.updated_at ?? null;
       }
       setLoaded(true);
@@ -1070,22 +1071,16 @@ export default function App() {
   }, []);
 
   // ─── GUARDADO con debounce ───────────────────────────────────────────────────
-  // Guardamos en un ref la función de guardado para tener siempre la versión
-  // fresca de `items` y `settings` sin que el useEffect se re-registre.
-  const itemsRef = useRef(items);
-  const settingsRef = useRef(settings);
-  useEffect(() => { itemsRef.current = items; }, [items]);
-  useEffect(() => { settingsRef.current = settings; }, [settings]);
-
   useEffect(() => {
     if (!supabase || !loaded || items.length === 0) return;
 
     setSaving(true);
-
-    // Cancelamos el guardado anterior si el usuario sigue haciendo cambios
     if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
 
     pendingSaveRef.current = setTimeout(async () => {
+      // ← Activamos el flag ANTES de guardar
+      isSavingRef.current = true;
+
       const now = new Date().toISOString();
       const { error } = await supabase.from("ad_playlists").upsert({
         id: "main",
@@ -1095,16 +1090,18 @@ export default function App() {
       });
 
       if (!error) {
-        // Registramos la versión que acabamos de guardar.
-        // El listener comparará contra este timestamp.
         localVersionRef.current = now;
       }
+
       setSaving(false);
+
+      // ← Desactivamos el flag después de un margen generoso
+      // El margen cubre el tiempo que tarda el evento realtime en llegar
+      setTimeout(() => { isSavingRef.current = false; }, 3000);
+
     }, 800);
 
-    return () => {
-      if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
-    };
+    return () => { if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current); };
   }, [items, settings, loaded]);
 
   // ─── LISTENER REALTIME ───────────────────────────────────────────────────────
@@ -1119,36 +1116,27 @@ export default function App() {
         (payload) => {
           if (!payload.new) return;
 
+          // ← Si acabamos de guardar nosotros, ignoramos el rebote sin comparar timestamps
+          if (isSavingRef.current) return;
+
           const serverVersion = payload.new.updated_at;
           const myVersion = localVersionRef.current;
 
-          // ─── LÓGICA CLAVE ─────────────────────────────────────────────────
-          // Solo aplicamos el cambio remoto si el servidor tiene una versión
-          // MÁS NUEVA que la nuestra. Si el timestamp es igual o anterior,
-          // significa que somos nosotros mismos quienes guardamos eso,
-          // y lo ignoramos para no pisar nuestro estado local.
-          if (myVersion && serverVersion <= myVersion) {
-            // Es nuestro propio rebote — ignorar
-            return;
-          }
+          // Doble chequeo con timestamp por si el flag ya se limpió
+          if (myVersion && serverVersion <= myVersion) return;
 
-          // Es un cambio de otro dispositivo — aplicar
+          // Es un cambio real de otro dispositivo → aplicar
           setItems(prev => {
             syncCache(payload.new.items || [], prev);
             return payload.new.items || [];
           });
           setSettings(payload.new.settings || {});
-
-          // Actualizamos la versión local para que futuros rebotes
-          // de este mismo evento también sean ignorados correctamente
           localVersionRef.current = serverVersion;
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   if (view === "kiosk") {
