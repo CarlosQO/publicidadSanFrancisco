@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// =====================================================
+// 🔧 CONFIGURACIÓN — Reemplaza con tus credenciales
+// =====================================================
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_BUCKET = "media";
@@ -13,7 +16,7 @@ try {
 } catch (e) { }
 
 // =====================================================
-// STYLES - Versión final mejorada para móvil
+// STYLES
 // =====================================================
 const style = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
@@ -47,145 +50,9 @@ const style = `
   .screen-badge { font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
   .screen-badge span { color: var(--success); }
 
-  .admin { 
-    display: grid; 
-    grid-template-columns: 2fr 1fr; 
-    gap: 24px; 
-    padding: 28px; 
-    max-width: 1400px; 
-    width: 100%; 
-    margin: 0 auto; 
-  }
+  .admin { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
   .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
   .panel-title { font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 20px; }
-
-  .right-column {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    height: 100%;
-  }
-
-  /* ==================== MEDIA LIST - MEJORADO PARA MÓVIL ==================== */
-  .media-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
-  .media-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 14px; 
-    background: var(--surface2); 
-    border: 1px solid var(--border); 
-    border-radius: 14px; 
-    padding: 14px 16px; 
-    cursor: grab; 
-    transition: all 0.25s ease; 
-    position: relative;
-  }
-  .media-item:hover { 
-    border-color: var(--accent); 
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(108,99,255,0.12);
-  }
-  .media-item.dragging { opacity: 0.5; }
-
-  .drag-handle { 
-    color: var(--text-dim); 
-    font-size: 20px; 
-    cursor: grab; 
-    flex-shrink: 0; 
-    padding: 4px 6px;
-  }
-
-  .media-thumb { 
-    width: 64px; 
-    height: 48px; 
-    border-radius: 10px; 
-    object-fit: cover; 
-    flex-shrink: 0; 
-    background: #111; 
-    border: 1px solid var(--border);
-  }
-  .media-thumb-video { 
-    width: 64px; 
-    height: 48px; 
-    border-radius: 10px; 
-    flex-shrink: 0; 
-    background: #111; 
-    border: 1px solid var(--border);
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 22px; 
-  }
-
-  .media-info { flex: 1; min-width: 0; }
-  .media-name { 
-    font-size: 14.5px; 
-    font-weight: 500; 
-    white-space: nowrap; 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    line-height: 1.3;
-  }
-  .media-type { 
-    font-size: 11.5px; 
-    color: var(--text-dim); 
-    font-family: 'Space Mono', monospace; 
-    margin-top: 2px; 
-    letter-spacing: 0.5px;
-  }
-
-  .media-duration { 
-    display: flex; 
-    align-items: center; 
-    gap: 8px; 
-    flex-shrink: 0; 
-  }
-  .dur-btn { 
-    width: 34px; 
-    height: 34px; 
-    border-radius: 8px; 
-    border: 1px solid var(--border); 
-    background: var(--surface); 
-    color: var(--text); 
-    cursor: pointer; 
-    font-size: 15px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.2s; 
-    font-weight: 600;
-  }
-  .dur-btn:hover { 
-    border-color: var(--accent); 
-    color: var(--accent); 
-    background: rgba(108,99,255,0.1);
-  }
-  .dur-val { 
-    font-family: 'Space Mono', monospace; 
-    font-size: 14.5px; 
-    min-width: 42px; 
-    text-align: center; 
-    color: var(--text);
-  }
-
-  .del-btn { 
-    width: 32px; 
-    height: 32px; 
-    border-radius: 8px; 
-    border: none; 
-    background: transparent; 
-    color: var(--text-dim); 
-    cursor: pointer; 
-    font-size: 18px; 
-    transition: all 0.2s; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-  }
-  .del-btn:hover { 
-    background: rgba(255,95,126,0.15); 
-    color: var(--danger); 
-  }
 
   .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 24px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
   .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(108,99,255,0.05); }
@@ -201,6 +68,24 @@ const style = `
   .upload-filename { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .upload-percent { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; flex-shrink: 0; }
 
+  .media-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .media-item { display: flex; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: grab; transition: all 0.2s; }
+  .media-item:hover { border-color: var(--accent); }
+  .media-item.dragging { opacity: 0.4; }
+  .media-item.drag-over { border-color: var(--accent2); background: rgba(255,101,132,0.05); }
+  .drag-handle { color: var(--text-dim); font-size: 18px; cursor: grab; flex-shrink: 0; }
+  .media-thumb { width: 56px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
+  .media-thumb-video { width: 56px; height: 40px; border-radius: 6px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .media-info { flex: 1; min-width: 0; }
+  .media-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media-type { font-size: 11px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .media-duration { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .dur-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .dur-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .dur-val { font-family: 'Space Mono', monospace; font-size: 13px; min-width: 32px; text-align: center; }
+  .del-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+  .del-btn:hover { background: rgba(255,95,126,0.15); color: var(--danger); }
+
   .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
   .setting-label { font-size: 14px; }
@@ -211,19 +96,71 @@ const style = `
   .toggle.on::after { left: 23px; }
   .num-input { width: 70px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 13px; padding: 6px 10px; text-align: center; }
 
-  .btn-primary { width: 100%; padding: 13px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--accent), #8b5cf6); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .screens-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .screen-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+  .screen-item.active { border-color: var(--success); background: rgba(67,217,160,0.08); }
+  .screen-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); margin: 0 auto 6px; }
+  .screen-item.active .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+  .btn-primary { width: 100%; padding: 13px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--accent), #8b5cf6); color: white; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 16px; }
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(108,99,255,0.3); }
   .btn-primary:active { transform: translateY(0); }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+  /* =====================================================
+     KIOSK — SOLUCION DEFINITIVA
+     
+     Problema raiz: width/height en px inyectados por el
+     navegador en imagenes 4K/8K tienen mayor especificidad
+     que clases CSS. La solucion es NO usar width/height
+     en el elemento media. En su lugar, el CONTENEDOR es
+     flex y el media solo tiene max-width/max-height 100%.
+     El navegador calcula las dimensiones proporcionalmente
+     sin que ningun atributo HTML lo interfiera.
+  ===================================================== */
   .kiosk-wrap {
-    position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important;
-    background: #000 !important; z-index: 99999 !important; overflow: hidden !important;
-    display: flex !important; align-items: center !important; justify-content: center !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: #000 !important;
+    z-index: 99999 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  .kiosk-wrap img, .kiosk-wrap video {
-    display: block !important; max-width: 100vw !important; max-height: 100vh !important;
-    width: auto !important; height: auto !important; flex-shrink: 1 !important;
+
+  /* SIN width ni height absolutos — solo maximos */
+  .kiosk-wrap img,
+  .kiosk-wrap video {
+    display: block !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    width: auto !important;
+    height: auto !important;
+    flex-shrink: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Sin object-fit — no hace falta cuando width/height son auto */
+  }
+
+  .kiosk-progress-bar {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 3px !important;
+    background: rgba(255,255,255,0.12) !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
+  }
+  .kiosk-progress-fill {
+    height: 100% !important;
+    background: #6c63ff !important;
+    transition: width 0.1s linear !important;
   }
 
   .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: 14px; z-index: 999999; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); animation: slideUp 0.3s ease; white-space: nowrap; }
@@ -237,21 +174,6 @@ const style = `
   .key { font-family: 'Space Mono', monospace; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 11px; color: var(--accent); }
   .realtime-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-  /* RESPONSIVE */
-  @media (max-width: 1024px) {
-    .admin { grid-template-columns: 1fr; padding: 20px 16px; gap: 20px; }
-  }
-  @media (max-width: 480px) {
-    .media-item { padding: 14px; gap: 12px; flex-wrap: wrap; border-radius: 16px; }
-    .media-thumb, .media-thumb-video { width: 72px; height: 54px; border-radius: 12px; }
-    .media-info { flex: 1 1 100%; margin-top: 4px; }
-    .media-duration { margin-top: 8px; width: 100%; justify-content: center; gap: 10px; }
-    .dur-btn { width: 42px; height: 42px; font-size: 17px; }
-    .dur-val { font-size: 15.5px; min-width: 48px; }
-    .del-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; font-size: 17px; }
-    .drag-handle { font-size: 22px; padding: 6px; }
-  }
 `;
 
 function Toast({ msg, icon = "✓" }) {
@@ -264,6 +186,9 @@ function generateId() {
 
 // =====================================================
 // CACHE MANAGER
+// Guarda archivos en Cache API del navegador.
+// Solo descarga de Supabase cuando la URL cambia.
+// El TV funciona sin internet si ya tiene el caché.
 // =====================================================
 const CACHE_NAME = "adkiosk-media-v1";
 
@@ -307,7 +232,7 @@ async function syncCache(newItems, oldItems = []) {
 }
 
 // =====================================================
-// KIOSK VIEW (completo)
+// KIOSK VIEW
 // =====================================================
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
@@ -324,6 +249,7 @@ function KioskView({ items, onExit }) {
   const isVideo = current?.type === "video";
   const resolveUrl = (item) => cachedUrls[item?.url] || item?.url || "";
 
+  // Carga todas las URLs en caché local al montar
   useEffect(() => {
     let cancelled = false;
     const loadAll = async () => {
@@ -342,6 +268,7 @@ function KioskView({ items, onExit }) {
     return () => { cancelled = true; };
   }, [items]);
 
+  // Limpia blob URLs al desmontar
   useEffect(() => {
     return () => {
       blobUrlsRef.current.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { } });
@@ -353,11 +280,16 @@ function KioskView({ items, onExit }) {
     el.removeAttribute("width");
     el.removeAttribute("height");
     el.style.cssText = `
-      position: absolute !important; top: 0 !important; left: 0 !important;
-      width: ${window.innerWidth}px !important; height: ${window.innerHeight}px !important;
-      object-fit: contain !important; background: #000 !important;
-      margin: 0 !important; padding: 0 !important; display: block !important;
-      max-width: none !important; max-height: none !important;
+      position: absolute !important;
+      top: 0 !important; left: 0 !important;
+      width: ${window.innerWidth}px !important;
+      height: ${window.innerHeight}px !important;
+      object-fit: contain !important;
+      background: #000 !important;
+      margin: 0 !important; padding: 0 !important;
+      display: block !important;
+      max-width: none !important;
+      max-height: none !important;
     `;
   }, []);
 
@@ -437,6 +369,7 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("keydown", handler);
   }, [next, prev, goFirst, toggleFullscreen, onExit]);
 
+  // Gestos táctiles
   useEffect(() => {
     let startX = 0, startY = 0, startTime = 0;
     let touchCount = 0;
@@ -450,6 +383,7 @@ function KioskView({ items, onExit }) {
       startY = e.touches[0].clientY;
       startTime = Date.now();
       pathPoints = [{ x: startX, y: startY }];
+      // Mantener 1.5s → pantalla completa
       longPressTimer = setTimeout(() => {
         toggleFullscreen();
         navigator.vibrate?.(40);
@@ -476,20 +410,26 @@ function KioskView({ items, onExit }) {
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
 
+      // 3 dedos tap → salir
       if (touchCount === 3 && elapsed < 400 && absDx < 30 && absDy < 30) {
         onExit(); navigator.vibrate?.(30); return;
       }
+
+      // 2 dedos swipe arriba → ir al primero
       if (touchCount === 2 && dy < -80 && absDy > absDx) {
         goFirst(); navigator.vibrate?.([20, 30, 20]); return;
       }
+
       if (touchCount !== 1) return;
 
+      // Doble tap → ir al primero
       const now = Date.now();
       if (now - lastTap < 300 && absDx < 30 && absDy < 30) {
         goFirst(); navigator.vibrate?.([20, 30, 20]); lastTap = 0; return;
       }
       lastTap = now;
 
+      // Dibujar L → ir al primero
       if (pathPoints.length >= 4 && elapsed > 200 && elapsed < 1500) {
         const mid = Math.floor(pathPoints.length / 2);
         const s1 = pathPoints.slice(0, mid), s2 = pathPoints.slice(mid);
@@ -504,12 +444,14 @@ function KioskView({ items, onExit }) {
         }
       }
 
+      // Swipe horizontal → navegar
       if (absDx > 60 && absDx > absDy * 1.5 && elapsed < 500) {
         if (dx > 0) { prev(); navigator.vibrate?.(15); }
         else { next(); navigator.vibrate?.(15); }
         return;
       }
 
+      // Tap zona izquierda → anterior, zona derecha → siguiente
       if (elapsed < 200 && absDx < 20 && absDy < 20) {
         const W = window.innerWidth;
         if (startX < W * 0.25) { prev(); navigator.vibrate?.(15); }
@@ -554,123 +496,6 @@ function KioskView({ items, onExit }) {
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.12)", zIndex: 10, pointerEvents: "none" }}>
         <div style={{ height: "100%", background: "#6c63ff", width: progress + "%", transition: "width 0.1s linear" }} />
       </div>
-    </div>
-  );
-}
-
-// =====================================================
-// COMPONENTES EXTRAÍDOS
-// =====================================================
-function UploadZone({ drag, setDrag, uploading, uploadingFile, uploadProgress, fileInputRef, handleFiles }) {
-  return (
-    <div
-      className={`upload-zone ${drag ? "drag" : ""} ${uploading ? "uploading-active" : ""}`}
-      onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={(e) => { e.preventDefault(); setDrag(false); handleFiles([...e.dataTransfer.files]); }}
-      onClick={() => !uploading && fileInputRef.current?.click()}
-    >
-      <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={(e) => handleFiles([...e.target.files])} />
-      {uploading ? (
-        <>
-          <div className="upload-icon">{uploadingFile.match(/\.(mp4|mov|avi|webm)$/i) ? "🎬" : "🖼️"}</div>
-          <div className="upload-text">Subiendo archivo...</div>
-          <div className="upload-bar" style={{ marginTop: 12 }}>
-            <div className="upload-bar-fill" style={{ width: uploadProgress + "%" }} />
-          </div>
-          <div className="upload-status">
-            <div className="upload-status-dot" />
-            <div className="upload-filename">{uploadingFile}</div>
-            <div className="upload-percent">{uploadProgress}%</div>
-          </div>
-          <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 8 }}>Por favor espera, no cierres esta ventana</div>
-        </>
-      ) : (
-        <>
-          <div className="upload-icon">🖼️</div>
-          <div className="upload-text">Arrastra imágenes o videos aquí</div>
-          <div className="upload-sub">O haz clic para seleccionar • JPG, PNG, GIF, MP4, MOV</div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function MediaItem({ item, i, draggingIdx, dragOverIdx, onDragStart, onDragOver, onDrop, onDragEnd, updateDuration, removeItem }) {
-  return (
-    <div
-      className={`media-item ${draggingIdx === i ? "dragging" : ""} ${dragOverIdx === i ? "drag-over" : ""}`}
-      draggable
-      onDragStart={() => onDragStart(i)}
-      onDragOver={(e) => onDragOver(e, i)}
-      onDrop={() => onDrop(i)}
-      onDragEnd={onDragEnd}
-    >
-      <span className="drag-handle">⋮⋮</span>
-      <span style={{ fontFamily: "Space Mono", fontSize: 12, color: "var(--text-dim)", minWidth: 20 }}>{i + 1}</span>
-      {item.type === "image" ? (
-        <img className="media-thumb" src={item.url} alt={item.title} />
-      ) : (
-        <div className="media-thumb-video">🎬</div>
-      )}
-      <div className="media-info">
-        <div className="media-name">{item.title}</div>
-        <div className="media-type">{item.type === "image" ? "IMAGEN" : "VIDEO"}</div>
-      </div>
-      {item.type === "image" && (
-        <div className="media-duration">
-          <button
-            className="dur-btn"
-            draggable={false}
-            onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
-          >−</button>
-          <span className="dur-val">{item.duration || 5}s</span>
-          <button
-            className="dur-btn"
-            draggable={false}
-            onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
-          >+</button>
-        </div>
-      )}
-      <button
-        className="del-btn"
-        draggable={false}
-        onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-      >✕</button>
-    </div>
-  );
-}
-
-function ConfigurationPanel({ settings, setSettings }) {
-  return (
-    <div className="panel">
-      <div className="panel-title">⚙️ Configuración</div>
-      <div className="setting-row">
-        <div><div className="setting-label">Loop infinito</div><div className="setting-sub">Repite el carrusel automáticamente</div></div>
-        <button className={`toggle ${settings.loop ? "on" : ""}`} onClick={() => setSettings(s => ({ ...s, loop: !s.loop }))} />
-      </div>
-      <div className="setting-row">
-        <div><div className="setting-label">Transición suave</div><div className="setting-sub">Fade entre elementos</div></div>
-        <button className={`toggle ${settings.fade ? "on" : ""}`} onClick={() => setSettings(s => ({ ...s, fade: !s.fade }))} />
-      </div>
-      <div className="setting-row">
-        <div><div className="setting-label">Duración por defecto</div><div className="setting-sub">Para nuevas imágenes (seg.)</div></div>
-        <input className="num-input" type="number" min={1} max={60} value={settings.defaultDuration} onChange={(e) => setSettings(s => ({ ...s, defaultDuration: parseInt(e.target.value) || 5 }))} />
-      </div>
-    </div>
-  );
-}
-
-function ShortcutsPanel() {
-  return (
-    <div className="panel">
-      <div className="panel-title">⌨️ Atajos de Teclado</div>
-      {[["L", "Ir al primer elemento"], ["→ ←", "Siguiente / Anterior"], ["F", "Pantalla completa"], ["ESC", "Salir del kiosko"]].map(([key, desc]) => (
-        <div key={key} className="shortcut-item">
-          <span className="key">{key}</span>
-          <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{desc}</span>
-        </div>
-      ))}
     </div>
   );
 }
@@ -758,11 +583,15 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
 
   const removeItem = async (id) => {
     const item = items.find(it => it.id === id);
+    // Eliminar del storage si es una URL de Supabase
     if (supabase && item?.url?.includes(SUPABASE_URL)) {
       try {
+        // Extraer el path del archivo desde la URL pública
+        // URL formato: https://xxx.supabase.co/storage/v1/object/public/media/FILENAME
         const parts = item.url.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`);
         if (parts[1]) {
-          await supabase.storage.from(STORAGE_BUCKET).remove([parts[1]]);
+          const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([parts[1]]);
+          if (error) console.error("Error eliminando storage:", error.message);
         }
       } catch (err) {
         console.error("Error eliminando archivo:", err);
@@ -784,24 +613,46 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
     setDragOverIdx(null);
   };
 
+  const SCREENS = ["TV Sala", "TV Recepción", "TV Exterior", "Pantalla 4", "Pantalla 5", "Pantalla 6"];
+
   return (
     <div className="admin">
       <div>
         {!supabase && (
           <div className="demo-banner">⚠️ Modo demo — configura tus credenciales de Supabase para guardar en la nube</div>
         )}
-
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-title">📂 Subir Contenido</div>
-          <UploadZone
-            drag={drag}
-            setDrag={setDrag}
-            uploading={uploading}
-            uploadingFile={uploadingFile}
-            uploadProgress={uploadProgress}
-            fileInputRef={fileInputRef}
-            handleFiles={handleFiles}
-          />
+          <div
+            className={`upload-zone ${drag ? "drag" : ""} ${uploading ? "uploading-active" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); handleFiles([...e.dataTransfer.files]); }}
+            onClick={() => !uploading && fileInputRef.current?.click()}
+          >
+            <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple style={{ display: "none" }} onChange={(e) => handleFiles([...e.target.files])} />
+            {uploading ? (
+              <>
+                <div className="upload-icon">{uploadingFile.match(/\.(mp4|mov|avi|webm)$/i) ? "🎬" : "🖼️"}</div>
+                <div className="upload-text">Subiendo archivo...</div>
+                <div className="upload-bar" style={{ marginTop: 12 }}>
+                  <div className="upload-bar-fill" style={{ width: uploadProgress + "%" }} />
+                </div>
+                <div className="upload-status">
+                  <div className="upload-status-dot" />
+                  <div className="upload-filename">{uploadingFile}</div>
+                  <div className="upload-percent">{uploadProgress}%</div>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 8 }}>Por favor espera, no cierres esta ventana</div>
+              </>
+            ) : (
+              <>
+                <div className="upload-icon">🖼️</div>
+                <div className="upload-text">Arrastra imágenes o videos aquí</div>
+                <div className="upload-sub">O haz clic para seleccionar • JPG, PNG, GIF, MP4, MOV</div>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="panel">
@@ -818,40 +669,92 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
           ) : (
             <div className="media-list">
               {items.map((item, i) => (
-                <MediaItem
+                <div
                   key={item.id}
-                  item={item}
-                  i={i}
-                  draggingIdx={draggingIdx}
-                  dragOverIdx={dragOverIdx}
-                  onDragStart={onDragStart}
-                  onDragOver={onDragOver}
-                  onDrop={onDrop}
+                  className={`media-item ${draggingIdx === i ? "dragging" : ""} ${dragOverIdx === i ? "drag-over" : ""}`}
+                  draggable
+                  onDragStart={() => onDragStart(i)}
+                  onDragOver={(e) => onDragOver(e, i)}
+                  onDrop={() => onDrop(i)}
                   onDragEnd={() => { setDraggingIdx(null); setDragOverIdx(null); }}
-                  updateDuration={updateDuration}
-                  removeItem={removeItem}
-                />
+                >
+                  <span className="drag-handle">⋮⋮</span>
+                  <span style={{ fontFamily: "Space Mono", fontSize: 11, color: "var(--text-dim)", minWidth: 18 }}>{i + 1}</span>
+                  {item.type === "image" ? (
+                    <img className="media-thumb" src={item.url} alt={item.title} />
+                  ) : (
+                    <div className="media-thumb-video">🎬</div>
+                  )}
+                  <div className="media-info">
+                    <div className="media-name">{item.title}</div>
+                    <div className="media-type">{item.type === "image" ? "IMAGEN" : "VIDEO"}</div>
+                  </div>
+                  {item.type === "image" && (
+                    <div className="media-duration">
+                      <button className="dur-btn" onClick={() => updateDuration(item.id, -1)}>−</button>
+                      <span className="dur-val">{item.duration || 5}s</span>
+                      <button className="dur-btn" onClick={() => updateDuration(item.id, 1)}>+</button>
+                    </div>
+                  )}
+                  <button className="del-btn" onClick={() => removeItem(item.id)}>✕</button>
+                </div>
               ))}
             </div>
           )}
         </div>
       </div>
 
-      <div className="right-column">
-        <ConfigurationPanel settings={settings} setSettings={setSettings} />
-        <ShortcutsPanel />
-
-        <div style={{ marginTop: "auto" }}>
-          <button className="btn-primary" onClick={onLaunch} disabled={items.length === 0}>
-            {items.length === 0 ? "Agrega contenido primero" : "Ver el contenido"}
-          </button>
-
-          {saving && (
-            <div style={{ textAlign: "center", fontSize: 12, color: "var(--success)", marginTop: 12 }}>
-              <span className="realtime-dot" />Guardando...
-            </div>
-          )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className="panel">
+          <div className="panel-title">⚙️ Configuración</div>
+          <div className="setting-row">
+            <div><div className="setting-label">Loop infinito</div><div className="setting-sub">Repite el carrusel automáticamente</div></div>
+            <button className={`toggle ${settings.loop ? "on" : ""}`} onClick={() => setSettings(s => ({ ...s, loop: !s.loop }))} />
+          </div>
+          <div className="setting-row">
+            <div><div className="setting-label">Transición suave</div><div className="setting-sub">Fade entre elementos</div></div>
+            <button className={`toggle ${settings.fade ? "on" : ""}`} onClick={() => setSettings(s => ({ ...s, fade: !s.fade }))} />
+          </div>
+          <div className="setting-row">
+            <div><div className="setting-label">Duración por defecto</div><div className="setting-sub">Para nuevas imágenes (seg.)</div></div>
+            <input className="num-input" type="number" min={1} max={60} value={settings.defaultDuration} onChange={(e) => setSettings(s => ({ ...s, defaultDuration: parseInt(e.target.value) || 5 }))} />
+          </div>
         </div>
+
+        <div className="panel">
+          <div className="panel-title">📺 Pantallas Activas</div>
+          <div className="screens-grid">
+            {SCREENS.map((s, i) => (
+              <div key={i} className={`screen-item ${settings.activeScreens?.includes(i) ? "active" : ""}`}
+                onClick={() => setSettings(prev => {
+                  const active = prev.activeScreens || [];
+                  return { ...prev, activeScreens: active.includes(i) ? active.filter(x => x !== i) : [...active, i] };
+                })}>
+                <div className="dot" /><div>{s}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-title">⌨️ Atajos de Teclado</div>
+          {[["L", "Ir al primer elemento"], ["→ ←", "Siguiente / Anterior"], ["F", "Pantalla completa"], ["ESC", "Salir del kiosko"]].map(([key, desc]) => (
+            <div key={key} className="shortcut-item">
+              <span className="key">{key}</span>
+              <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{desc}</span>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn-primary" onClick={onLaunch} disabled={items.length === 0}>
+          {items.length === 0 ? "Agrega contenido primero" : "▶ Lanzar Vista Kiosko"}
+        </button>
+
+        {saving && (
+          <div style={{ textAlign: "center", fontSize: 12, color: "var(--success)" }}>
+            <span className="realtime-dot" />Guardando en Supabase...
+          </div>
+        )}
       </div>
 
       {toast && <Toast msg={toast.msg} icon={toast.icon} />}
@@ -863,13 +766,13 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
 // APP ROOT
 // =====================================================
 export default function App() {
+  // Persiste la vista en el hash de la URL → F5 restaura el estado
   const [view, setView] = useState(() => window.location.hash === "#kiosk" ? "kiosk" : "admin");
 
   const changeView = (v) => {
     window.location.hash = v === "kiosk" ? "kiosk" : "";
     setView(v);
   };
-
   const [items, setItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -909,6 +812,7 @@ export default function App() {
     const channel = supabase.channel("playlist")
       .on("postgres_changes", { event: "*", schema: "public", table: "ad_playlists" }, (payload) => {
         if (payload.new?.items) {
+          // Sincroniza caché: descarga nuevos, elimina los que ya no están
           setItems(prev => {
             syncCache(payload.new.items, prev);
             return payload.new.items;
@@ -927,7 +831,7 @@ export default function App() {
     <div className="app">
       <style>{style}</style>
       <nav className="nav">
-        <div className="nav-logo">San Francisco</div>
+        <div className="nav-logo">ADKIOSK</div>
         <div className="nav-tabs">
           <button className="nav-tab active">Admin</button>
         </div>
@@ -940,14 +844,7 @@ export default function App() {
           <div className="screen-badge">{items.length} elementos</div>
         </div>
       </nav>
-      <AdminPanel
-        items={items}
-        setItems={setItems}
-        settings={settings}
-        setSettings={setSettings}
-        onLaunch={() => changeView("kiosk")}
-        saving={saving}
-      />
+      <AdminPanel items={items} setItems={setItems} settings={settings} setSettings={setSettings} onLaunch={() => changeView("kiosk")} saving={saving} />
     </div>
   );
 }
