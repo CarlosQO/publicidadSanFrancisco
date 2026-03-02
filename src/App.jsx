@@ -244,8 +244,8 @@ async function syncCache(newItems, oldItems = []) {
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  // const lastLocalUpdate = useRef(0);
   const [cachedUrls, setCachedUrls] = useState({});
-  const lastLocalUpdate = useRef(0);
   const videoRef = useRef(null);
   const imgRef = useRef(null);
   const timerRef = useRef(null);
@@ -797,7 +797,7 @@ export default function App() {
   }, []);
 
   // 1. Agrega esta referencia al inicio de tu componente App (junto a los otros useRef)
-  // const lastLocalUpdate = useRef(0);
+  const lastLocalUpdate = useRef(0);
 
   // 2. Modifica el useEffect de guardado así:
   useEffect(() => {
