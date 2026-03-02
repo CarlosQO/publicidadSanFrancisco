@@ -370,19 +370,24 @@ function KioskView({ items, onExit }) {
   const prev = useCallback(() => goTo(idx - 1), [idx, goTo]);
   const goFirst = useCallback(() => goTo(0), [goTo]);
 
-  // ── Timer para imágenes ──────────────────────────────────────────────────────
+  // ── Ref estable para next — evita closures viejos en listeners ───────────────
+  const nextRef = useRef(null);
+  useEffect(() => { nextRef.current = next; }, [next]);
+
+  // ── Timer imágenes — SOLO si NO es video ─────────────────────────────────────
   useEffect(() => {
-    if (!current || isVideo) return;
+    if (!current || isVideo) return; // guardia estricta
     clearTimeout(timerRef.current);
     clearInterval(progressRef.current);
 
     if (paused) return;
 
-    startTimeRef.current = Date.now() - pausedAtRef.current;
     const totalDur = (current.duration || 5) * 1000;
     const effectiveDur = speed2x ? totalDur * 0.5 : totalDur;
     const elapsed = pausedAtRef.current;
-    const remaining = effectiveDur - (speed2x ? elapsed * 0.5 : elapsed);
+    const remaining = Math.max(effectiveDur - elapsed, 200);
+
+    startTimeRef.current = Date.now() - elapsed;
 
     progressRef.current = setInterval(() => {
       const e = Date.now() - startTimeRef.current;
@@ -391,22 +396,31 @@ function KioskView({ items, onExit }) {
 
     timerRef.current = setTimeout(() => {
       pausedAtRef.current = 0;
-      next();
-    }, Math.max(remaining, 100));
+      nextRef.current?.(); // ← siempre la versión más reciente de next
+    }, remaining);
 
-    return () => { clearTimeout(timerRef.current); clearInterval(progressRef.current); };
-  }, [idx, items, paused, speed2x]);
+    return () => {
+      clearTimeout(timerRef.current);
+      clearInterval(progressRef.current);
+    };
+  }, [idx, isVideo, paused, speed2x]); // sin "items" ni "next"
 
-  // ── Video: velocidad + progreso ──────────────────────────────────────────────
-  const nextRef = useRef(next);
-  useEffect(() => { nextRef.current = next; }, [next]);
-
+  // ── Video: velocidad x2 ──────────────────────────────────────────────────────
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v || !isVideo) return;
+    v.playbackRate = speed2x ? 2 : 1;
+  }, [speed2x, idx, isVideo]);
 
-    // Usa nextRef.current en vez de next directamente
-    const onEnd = () => { setSpeed2x(false); nextRef.current(); };
+  // ── Video: eventos ended + timeupdate ────────────────────────────────────────
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !isVideo) return;
+
+    const onEnd = () => {
+      setSpeed2x(false);
+      nextRef.current?.(); // ← ref estable, nunca closure viejo
+    };
     const onTime = () => {
       if (v.duration) setProgress((v.currentTime / v.duration) * 100);
     };
@@ -417,7 +431,7 @@ function KioskView({ items, onExit }) {
       v.removeEventListener("ended", onEnd);
       v.removeEventListener("timeupdate", onTime);
     };
-  }, [idx]);
+  }, [idx, isVideo]); // sin "next"
 
   // ── Seek en video ────────────────────────────────────────────────────────────
   const seekTo = (pct) => {
@@ -437,7 +451,7 @@ function KioskView({ items, onExit }) {
     };
   }, []);
 
-  // ── FIX 1: Bloquea touch-action para evitar zoom/gestos del SO ──────────────
+  // ── FIX 1: Bloquea touch-action — evita zoom/gestos del SO/Chrome ───────────
   useEffect(() => {
     const el = document.documentElement;
     el.style.touchAction = "none";
@@ -473,7 +487,9 @@ function KioskView({ items, onExit }) {
         case "ArrowLeft": prev(); break;
         case " ":
           if (isVideo) {
-            videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause();
+            videoRef.current?.paused
+              ? videoRef.current.play()
+              : videoRef.current?.pause();
           }
           break;
         default: break;
@@ -514,9 +530,7 @@ function KioskView({ items, onExit }) {
     };
 
     const onTouchStart = (e) => {
-      // ⛔ CRÍTICO: bloquea zoom, menú contextual y gestos del SO/navegador
-      e.preventDefault();
-
+      e.preventDefault(); // ⛔ bloquea zoom, menú y gestos del SO
       const n = e.touches.length;
       gestureStartTouches = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
 
@@ -571,8 +585,7 @@ function KioskView({ items, onExit }) {
     };
 
     const onTouchMove = (e) => {
-      // ⛔ Evita que Chrome haga zoom de página con pinch
-      e.preventDefault();
+      e.preventDefault(); // ⛔ evita zoom de página con pinch
 
       if (e.touches.length === 4 && gestureStartDist !== null) {
         const currentDist = avgDist4(e.touches);
@@ -600,7 +613,6 @@ function KioskView({ items, onExit }) {
 
     const onTouchEnd = (e) => {
       e.preventDefault();
-
       if (speed2xActive && e.touches.length < 2) {
         speed2xActive = false;
         setSpeed2x(false);
@@ -610,7 +622,7 @@ function KioskView({ items, onExit }) {
       if (e.touches.length < 4) gestureStartDist = null;
     };
 
-    // ⛔ passive:false es OBLIGATORIO — sin esto Chrome ignora preventDefault()
+    // ⛔ passive:false OBLIGATORIO
     window.addEventListener("touchstart", onTouchStart, { passive: false });
     window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd, { passive: false });
@@ -648,7 +660,7 @@ function KioskView({ items, onExit }) {
           src={currentUrl}
           autoPlay
           playsInline
-          onEnded={next}
+          // ⛔ Sin onEnded aquí — lo maneja el listener con nextRef para evitar closures viejos
           onLoadedMetadata={onMediaLoad}
         />
       ) : (
@@ -683,7 +695,6 @@ function KioskView({ items, onExit }) {
           width: "min(480px, 90vw)", backdropFilter: "blur(12px)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
         }}>
-          {/* Barra de progreso interactiva */}
           <div
             style={{ height: 8, background: "rgba(255,255,255,0.15)", borderRadius: 4, cursor: "pointer", position: "relative" }}
             onClick={(e) => {
@@ -713,7 +724,6 @@ function KioskView({ items, onExit }) {
             }} />
           </div>
 
-          {/* Botones */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
             <button
               onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }}
@@ -723,10 +733,7 @@ function KioskView({ items, onExit }) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (isVideo) {
-                  const v = videoRef.current;
-                  if (v) { v.paused ? v.play() : v.pause(); }
-                }
+                if (isVideo) { const v = videoRef.current; if (v) { v.paused ? v.play() : v.pause(); } }
                 setPaused(p => !p);
               }}
               style={{ ...ctrlBtn, fontSize: 22, width: 52, height: 52, borderRadius: "50%", background: "rgba(108,99,255,0.3)" }}

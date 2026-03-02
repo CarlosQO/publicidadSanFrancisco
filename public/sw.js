@@ -1,9 +1,6 @@
-const CACHE_VERSION = "sf-kiosk-v2";
+const CACHE_VERSION = "sf-kiosk-v3";
 
-const SHELL_ASSETS = [
-    "/",
-    "/index.html",
-];
+const SHELL_ASSETS = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
@@ -15,11 +12,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(
-                keys
-                    .filter((key) => key !== CACHE_VERSION)
-                    .map((key) => caches.delete(key))
-            )
+            Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
         )
     );
     self.clients.claim();
@@ -28,13 +21,13 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
 
-    // ⛔ Solo cachear GET — POST/PUT/DELETE nunca se cachean
+    // Solo GET
     if (event.request.method !== "GET") return;
 
-    // ⛔ No cachear peticiones a la API de Supabase (solo el storage/media)
+    // API de Supabase (no storage) → nunca cachear
     if (url.hostname.includes("supabase.co") && !url.pathname.includes("/storage/")) return;
 
-    // ── Media de Supabase Storage → Cache-First (nunca re-descarga) ──────────
+    // Media de Supabase Storage → Cache-First
     if (url.hostname.includes("supabase.co") && url.pathname.includes("/storage/")) {
         event.respondWith(
             caches.open(CACHE_VERSION).then(async (cache) => {
@@ -42,21 +35,25 @@ self.addEventListener("fetch", (event) => {
                 if (cached) return cached;
 
                 const response = await fetch(event.request);
-                if (response.ok) cache.put(event.request, response.clone());
+                if (response.ok) {
+                    // ✅ Clonar ANTES de usar — el original va al cache, el clon al navegador
+                    const toCache = response.clone();
+                    cache.put(event.request, toCache);
+                }
                 return response;
             })
         );
         return;
     }
 
-    // ── Shell de la app → Network-First con fallback a cache ─────────────────
+    // Shell de la app → Network-First
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                if (response.ok) {
-                    caches.open(CACHE_VERSION).then((cache) =>
-                        cache.put(event.request, response.clone())
-                    );
+                if (response.ok && response.status < 400) {
+                    // ✅ Clonar ANTES de retornar
+                    const toCache = response.clone();
+                    caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, toCache));
                 }
                 return response;
             })
