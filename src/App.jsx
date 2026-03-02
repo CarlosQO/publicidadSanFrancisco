@@ -685,12 +685,22 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                     <div className="media-duration">
                       <button
                         className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          updateDuration(item.id, -1);
+                        }}
                       >−</button>
-                      <span className="dur-val">{item.duration || 5}s</span>
+
+                      <span className="dur-val" key={`dur-${item.id}-${item.duration}`}>
+                        {item.duration || 5}s
+                      </span>
+
                       <button
                         className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          updateDuration(item.id, 1);
+                        }}
                       >+</button>
                     </div>
                   )}
