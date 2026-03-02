@@ -241,21 +241,31 @@ async function syncCache(newItems, oldItems = []) {
 // =====================================================
 // KIOSK VIEW
 // =====================================================
+// =====================================================
+// KIOSK VIEW — Nuevas interacciones táctiles
+// =====================================================
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [cachedUrls, setCachedUrls] = useState({});
+  const [paused, setPaused] = useState(false);
+  const [showControls, setShowControls] = useState(false);  // barra de video
+  const [speed2x, setSpeed2x] = useState(false);           // velocidad x2
+  const [isFullscreen, setIsFullscreen] = useState(false);  // pantalla completa real
+
   const videoRef = useRef(null);
   const imgRef = useRef(null);
   const timerRef = useRef(null);
   const progressRef = useRef(null);
   const startTimeRef = useRef(null);
+  const pausedAtRef = useRef(0);     // cuánto tiempo llevaba cuando pausamos
   const blobUrlsRef = useRef([]);
 
   const current = items[idx];
   const isVideo = current?.type === "video";
   const resolveUrl = (item) => cachedUrls[item?.url] || item?.url || "";
 
+  // ── Cache ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const loadAll = async () => {
@@ -280,6 +290,7 @@ function KioskView({ items, onExit }) {
     };
   }, []);
 
+  // ── Forzar tamaño ────────────────────────────────────────────────────────────
   const forceSize = useCallback((el) => {
     if (!el) return;
     el.removeAttribute("width");
@@ -314,163 +325,276 @@ function KioskView({ items, onExit }) {
     return () => window.removeEventListener("resize", onResize);
   }, [isVideo, forceSize]);
 
+  // ── Fullscreen ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const enterFullscreen = useCallback(() => {
+    document.documentElement.requestFullscreen?.().catch(() => { });
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+  }, []);
+
+  // ── Navegación ───────────────────────────────────────────────────────────────
   const goTo = useCallback((i) => {
+    setPaused(false);
+    setShowControls(false);
+    setSpeed2x(false);
     setIdx(((i % items.length) + items.length) % items.length);
     setProgress(0);
     startTimeRef.current = Date.now();
+    pausedAtRef.current = 0;
   }, [items.length]);
 
   const next = useCallback(() => goTo(idx + 1), [idx, goTo]);
   const prev = useCallback(() => goTo(idx - 1), [idx, goTo]);
   const goFirst = useCallback(() => goTo(0), [goTo]);
 
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-    else document.exitFullscreen?.();
-  }, []);
-
+  // ── Timer para imágenes ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!current || isVideo) return;
     clearTimeout(timerRef.current);
     clearInterval(progressRef.current);
-    startTimeRef.current = Date.now();
-    const dur = (current.duration || 5) * 1000;
+
+    if (paused) return; // imagen pausada en x2 — no avanza
+
+    startTimeRef.current = Date.now() - pausedAtRef.current;
+    const dur = (current.duration || 5) * 1000 * (speed2x ? 0.5 : 1);
+    const remaining = dur - pausedAtRef.current;
+
     progressRef.current = setInterval(() => {
-      setProgress(Math.min(((Date.now() - startTimeRef.current) / dur) * 100, 100));
+      const elapsed = Date.now() - startTimeRef.current;
+      setProgress(Math.min((elapsed / ((current.duration || 5) * 1000)) * 100, 100));
     }, 100);
-    timerRef.current = setTimeout(next, dur);
+
+    timerRef.current = setTimeout(() => {
+      pausedAtRef.current = 0;
+      next();
+    }, remaining);
+
     return () => { clearTimeout(timerRef.current); clearInterval(progressRef.current); };
-  }, [idx, items]);
+  }, [idx, items, paused, speed2x]);
+
+  // ── Video: velocidad + progreso ──────────────────────────────────────────────
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.playbackRate = speed2x ? 2 : 1;
+  }, [speed2x, idx]);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onEnd = () => next();
-    const onTime = () => { if (v.duration) setProgress((v.currentTime / v.duration) * 100); };
+    const onEnd = () => { setSpeed2x(false); next(); };
+    const onTime = () => {
+      if (v.duration) setProgress((v.currentTime / v.duration) * 100);
+    };
     v.addEventListener("ended", onEnd);
     v.addEventListener("timeupdate", onTime);
     return () => { v.removeEventListener("ended", onEnd); v.removeEventListener("timeupdate", onTime); };
   }, [idx]);
 
+  // ── Seek en video ────────────────────────────────────────────────────────────
+  const seekTo = (pct) => {
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    v.currentTime = v.duration * pct;
+    setProgress(pct * 100);
+  };
+
+  // ── Teclado ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    let keyBuffer = "";
-    let bufferTimer = null;
     const handler = (e) => {
-      const k = e.key;
-      keyBuffer += k.toLowerCase();
-      clearTimeout(bufferTimer);
-      bufferTimer = setTimeout(() => { keyBuffer = ""; }, 800);
-      if (keyBuffer.endsWith("ll")) { goFirst(); keyBuffer = ""; return; }
-      switch (k) {
-        case "Escape": onExit(); break;
-        case "f": case "F": toggleFullscreen(); break;
+      switch (e.key) {
+        case "Escape":
+          if (showControls) { setShowControls(false); setPaused(false); }
+          else onExit();
+          break;
+        case "f": case "F":
+          isFullscreen ? exitFullscreen() : enterFullscreen();
+          break;
         case "l": case "L": goFirst(); break;
         case "ArrowRight": next(); break;
         case "ArrowLeft": prev(); break;
+        case " ":
+          if (isVideo) {
+            videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause();
+          }
+          break;
         default: break;
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [next, prev, goFirst, toggleFullscreen, onExit]);
+  }, [next, prev, goFirst, onExit, isFullscreen, showControls, isVideo]);
 
-  useEffect(() => {
-    let startX = 0, startY = 0, startTime = 0;
-    let touchCount = 0;
-    let lastTap = 0;
-    let longPressTimer = null;
-    let pathPoints = [];
-
-    const onTouchStart = (e) => {
-      touchCount = e.touches.length;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startTime = Date.now();
-      pathPoints = [{ x: startX, y: startY }];
-      longPressTimer = setTimeout(() => {
-        toggleFullscreen();
-        navigator.vibrate?.(40);
-      }, 1500);
-    };
-
-    const onTouchMove = (e) => {
-      clearTimeout(longPressTimer);
-      if (e.touches.length === 1) {
-        const x = e.touches[0].clientX;
-        const y = e.touches[0].clientY;
-        const last = pathPoints[pathPoints.length - 1];
-        if (Math.hypot(x - last.x, y - last.y) > 20) pathPoints.push({ x, y });
-      }
-    };
-
-    const onTouchEnd = (e) => {
-      clearTimeout(longPressTimer);
-      const endX = e.changedTouches[0].clientX;
-      const endY = e.changedTouches[0].clientY;
-      const elapsed = Date.now() - startTime;
-      const dx = endX - startX;
-      const dy = endY - startY;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      if (touchCount === 3 && elapsed < 400 && absDx < 30 && absDy < 30) {
-        onExit(); navigator.vibrate?.(30); return;
-      }
-      if (touchCount === 2 && dy < -80 && absDy > absDx) {
-        goFirst(); navigator.vibrate?.([20, 30, 20]); return;
-      }
-      if (touchCount !== 1) return;
-
-      const now = Date.now();
-      if (now - lastTap < 300 && absDx < 30 && absDy < 30) {
-        goFirst(); navigator.vibrate?.([20, 30, 20]); lastTap = 0; return;
-      }
-      lastTap = now;
-
-      if (pathPoints.length >= 4 && elapsed > 200 && elapsed < 1500) {
-        const mid = Math.floor(pathPoints.length / 2);
-        const s1 = pathPoints.slice(0, mid), s2 = pathPoints.slice(mid);
-        const dx1 = s1[s1.length - 1].x - s1[0].x, dy1 = s1[s1.length - 1].y - s1[0].y;
-        const dx2 = s2[s2.length - 1].x - s2[0].x, dy2 = s2[s2.length - 1].y - s2[0].y;
-        const s1v = Math.abs(dy1) > Math.abs(dx1) * 1.5 && Math.abs(dy1) > 60;
-        const s1h = Math.abs(dx1) > Math.abs(dy1) * 1.5 && Math.abs(dx1) > 60;
-        const s2v = Math.abs(dy2) > Math.abs(dx2) * 1.5 && Math.abs(dy2) > 60;
-        const s2h = Math.abs(dx2) > Math.abs(dy2) * 1.5 && Math.abs(dx2) > 60;
-        if ((s1v && s2h) || (s1h && s2v)) {
-          goFirst(); navigator.vibrate?.([20, 30, 20]); return;
-        }
-      }
-
-      if (absDx > 60 && absDx > absDy * 1.5 && elapsed < 500) {
-        if (dx > 0) { prev(); navigator.vibrate?.(15); }
-        else { next(); navigator.vibrate?.(15); }
-        return;
-      }
-
-      if (elapsed < 200 && absDx < 20 && absDy < 20) {
-        const W = window.innerWidth;
-        if (startX < W * 0.25) { prev(); navigator.vibrate?.(15); }
-        else if (startX > W * 0.75) { next(); navigator.vibrate?.(15); }
-      }
-    };
-
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("touchend", onTouchEnd);
-    return () => {
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-      clearTimeout(longPressTimer);
-    };
-  }, [next, prev, goFirst, toggleFullscreen, onExit]);
-
+  // ── Bloquear scroll ──────────────────────────────────────────────────────────
   useEffect(() => {
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; document.documentElement.style.overflow = ""; };
   }, []);
 
+  // =====================================================================
+  // 🖐 GESTOS TÁCTILES — lógica completa nueva
+  // =====================================================================
+  useEffect(() => {
+    // Estado interno del gesto
+    let gestureStartTouches = [];  // snapshot al inicio
+    let doubleTapTimer = null;
+    let tapCount = 0;              // conteo de taps de 2 dedos
+    let tapZone = null;            // "left" | "center" | "right"
+    let longPressTimer = null;
+    let speed2xActive = false;     // estado local para limpiar al soltar
+    let gestureStartDist = null;   // distancia inicial para pinch de 4 dedos
+
+    // Zona de toque (izquierda 30% | centro 40% | derecha 30%)
+    const getZone = (touches) => {
+      const W = window.innerWidth;
+      const avgX = Array.from(touches).reduce((s, t) => s + t.clientX, 0) / touches.length;
+      if (avgX < W * 0.30) return "left";
+      if (avgX > W * 0.70) return "right";
+      return "center";
+    };
+
+    // Distancia entre 2 puntos (para pinch)
+    const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    // Distancia media entre todos los pares de 4 dedos
+    const avgDist4 = (touches) => {
+      const pts = Array.from(touches).slice(0, 4);
+      let total = 0, count = 0;
+      for (let i = 0; i < pts.length; i++)
+        for (let j = i + 1; j < pts.length; j++) {
+          total += dist2(pts[i], pts[j]); count++;
+        }
+      return total / count;
+    };
+
+    const onTouchStart = (e) => {
+      const n = e.touches.length;
+      gestureStartTouches = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
+
+      // ── 4 dedos: preparar pinch fullscreen ───────────────────────────
+      if (n === 4) {
+        clearTimeout(longPressTimer);
+        gestureStartDist = avgDist4(e.touches);
+        return;
+      }
+
+      gestureStartDist = null;
+
+      // ── 2 dedos ──────────────────────────────────────────────────────
+      if (n === 2) {
+        const zone = getZone(e.touches);
+
+        // Long-press zona centro → x2
+        longPressTimer = setTimeout(() => {
+          speed2xActive = true;
+          setSpeed2x(true);
+          navigator.vibrate?.(60);
+        }, 600);
+
+        // Doble-tap de 2 dedos
+        tapCount++;
+        tapZone = zone;
+
+        if (doubleTapTimer) clearTimeout(doubleTapTimer);
+        doubleTapTimer = setTimeout(() => { tapCount = 0; tapZone = null; }, 400);
+
+        if (tapCount === 2 && tapZone === zone) {
+          tapCount = 0;
+          clearTimeout(doubleTapTimer);
+          clearTimeout(longPressTimer);
+
+          if (zone === "left") {
+            prev();
+            navigator.vibrate?.(15);
+          } else if (zone === "right") {
+            next();
+            navigator.vibrate?.(15);
+          } else {
+            // Centro: pausar + mostrar barra de control
+            if (isVideo) {
+              const v = videoRef.current;
+              if (v) { v.paused ? v.play() : v.pause(); }
+            }
+            setPaused(p => !p);
+            setShowControls(p => !p);
+            navigator.vibrate?.([20, 30, 20]);
+          }
+        }
+        return;
+      }
+
+      // ── 1 dedo o 3 dedos: limpiar ────────────────────────────────────
+      clearTimeout(longPressTimer);
+    };
+
+    const onTouchMove = (e) => {
+      // 4 dedos: detectar pinch mientras se mueve
+      if (e.touches.length === 4 && gestureStartDist !== null) {
+        const currentDist = avgDist4(e.touches);
+        const ratio = currentDist / gestureStartDist;
+        if (ratio > 1.25) {
+          // Expandiendo → fullscreen
+          enterFullscreen();
+          gestureStartDist = currentDist; // resetear para no disparar repetido
+          navigator.vibrate?.(30);
+        } else if (ratio < 0.75) {
+          // Contrayendo → salir fullscreen
+          exitFullscreen();
+          gestureStartDist = currentDist;
+          navigator.vibrate?.(30);
+        }
+      }
+
+      // Si se mueven los dedos en zona centro con 2 dedos, cancelar long-press
+      if (e.touches.length === 2) {
+        const cur = Array.from(e.touches);
+        const moved = cur.some((t, i) => {
+          const s = gestureStartTouches[i];
+          return s && Math.hypot(t.clientX - s.x, t.clientY - s.y) > 12;
+        });
+        if (moved) clearTimeout(longPressTimer);
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      // Al soltar, si estaba x2 por long-press → quitar x2
+      if (speed2xActive && e.touches.length < 2) {
+        speed2xActive = false;
+        setSpeed2x(false);
+        navigator.vibrate?.(20);
+      }
+      if (e.touches.length < 2) {
+        clearTimeout(longPressTimer);
+      }
+      if (e.touches.length < 4) {
+        gestureStartDist = null;
+      }
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd);
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      clearTimeout(longPressTimer);
+      clearTimeout(doubleTapTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, isVideo, isFullscreen]);
+
+  // ── Sin contenido ─────────────────────────────────────────────────────────
   if (!items.length) return (
     <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, zIndex: 99999 }}>
       <div style={{ fontSize: 48 }}>📺</div>
@@ -483,17 +607,145 @@ function KioskView({ items, onExit }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#000", zIndex: 99999, overflow: "hidden", margin: 0, padding: 0 }}>
+
       {isVideo ? (
-        <video key={current.url} ref={(el) => { videoRef.current = el; forceSize(el); }} src={currentUrl} autoPlay playsInline onEnded={next} onLoadedMetadata={onMediaLoad} />
+        <video
+          key={current.url}
+          ref={(el) => { videoRef.current = el; forceSize(el); }}
+          src={currentUrl}
+          autoPlay
+          playsInline
+          onEnded={next}
+          onLoadedMetadata={onMediaLoad}
+        />
       ) : (
-        <img key={current.url} ref={(el) => { imgRef.current = el; forceSize(el); }} src={currentUrl} alt={current.title} draggable={false} onLoad={onMediaLoad} />
+        <img
+          key={current.url}
+          ref={(el) => { imgRef.current = el; forceSize(el); }}
+          src={currentUrl}
+          alt={current.title}
+          draggable={false}
+          onLoad={onMediaLoad}
+        />
       )}
+
+      {/* ── Indicador x2 ── */}
+      {speed2x && (
+        <div style={{
+          position: "absolute", top: 24, left: "50%", transform: "translateX(-50%)",
+          background: "rgba(108,99,255,0.85)", color: "#fff", borderRadius: 10,
+          padding: "8px 20px", fontFamily: "'Space Mono', monospace",
+          fontSize: 18, fontWeight: 700, zIndex: 10, pointerEvents: "none",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+        }}>⚡ ×2</div>
+      )}
+
+      {/* ── Barra de control (aparece al doble-tap centro) ── */}
+      {showControls && (
+        <div style={{
+          position: "absolute", bottom: 28, left: "50%", transform: "translateX(-50%)",
+          background: "rgba(10,10,20,0.85)", border: "1px solid rgba(108,99,255,0.4)",
+          borderRadius: 16, padding: "16px 24px", zIndex: 20,
+          display: "flex", flexDirection: "column", gap: 14,
+          width: "min(480px, 90vw)", backdropFilter: "blur(12px)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        }}>
+          {/* Barra de progreso interactiva */}
+          <div
+            style={{ height: 8, background: "rgba(255,255,255,0.15)", borderRadius: 4, cursor: "pointer", position: "relative" }}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pct = (e.clientX - rect.left) / rect.width;
+              if (isVideo) seekTo(Math.max(0, Math.min(1, pct)));
+              else {
+                // Para imagen: salta a un % del tiempo total
+                const dur = (current.duration || 5) * 1000;
+                pausedAtRef.current = dur * Math.max(0, Math.min(1, pct));
+                setProgress(pct * 100);
+              }
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+            }}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              const touch = e.changedTouches[0];
+              const pct = (touch.clientX - rect.left) / rect.width;
+              if (isVideo) seekTo(Math.max(0, Math.min(1, pct)));
+            }}
+          >
+            <div style={{ height: "100%", width: progress + "%", background: "linear-gradient(90deg,#6c63ff,#ff6584)", borderRadius: 4, transition: "width 0.1s linear" }} />
+            {/* Thumb */}
+            <div style={{
+              position: "absolute", top: "50%", left: progress + "%",
+              transform: "translate(-50%,-50%)",
+              width: 16, height: 16, borderRadius: "50%", background: "#fff",
+              boxShadow: "0 0 8px rgba(108,99,255,0.8)",
+            }} />
+          </div>
+
+          {/* Botones de control */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20 }}>
+            {/* ← 10s */}
+            <button
+              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) { videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); } }}
+              style={ctrlBtn}
+            >⏪ 10s</button>
+
+            {/* Play/Pause */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isVideo) {
+                  const v = videoRef.current;
+                  if (v) { v.paused ? v.play() : v.pause(); }
+                }
+                setPaused(p => !p);
+              }}
+              style={{ ...ctrlBtn, fontSize: 22, width: 52, height: 52, borderRadius: "50%", background: "rgba(108,99,255,0.3)" }}
+            >{paused ? "▶" : "⏸"}</button>
+
+            {/* +10s */}
+            <button
+              onClick={(e) => { e.stopPropagation(); if (isVideo && videoRef.current) { videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10); } }}
+              style={ctrlBtn}
+            >10s ⏩</button>
+          </div>
+
+          {/* Cerrar barra */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowControls(false); setPaused(false); if (isVideo) videoRef.current?.play(); }}
+            style={{ ...ctrlBtn, fontSize: 11, opacity: 0.6, alignSelf: "center" }}
+          >✕ Cerrar</button>
+        </div>
+      )}
+
+      {/* ── Barra de progreso inferior ── */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.12)", zIndex: 10, pointerEvents: "none" }}>
         <div style={{ height: "100%", background: "#6c63ff", width: progress + "%", transition: "width 0.1s linear" }} />
       </div>
     </div>
   );
 }
+
+// Estilo base para botones de control
+const ctrlBtn = {
+  background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.15)",
+  color: "#fff",
+  borderRadius: 10,
+  padding: "8px 16px",
+  fontSize: 14,
+  cursor: "pointer",
+  fontFamily: "'DM Sans', sans-serif",
+  fontWeight: 500,
+  width: 80,
+  height: 44,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 // =====================================================
 // ADMIN PANEL
