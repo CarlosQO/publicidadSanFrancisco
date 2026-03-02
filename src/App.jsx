@@ -836,7 +836,7 @@ export default function App() {
           // Si yo cambié algo hace menos de 2.5 segundos, ignoro lo que diga el servidor
           // porque probablemente sea un dato "viejo" que viene de camino.
           if (timeSinceMyLastChange < 2500) {
-            console.log("Ignorando rebote del servidor...");
+            // console.log("Ignorando rebote del servidor...");
             return;
           }
 
@@ -865,7 +865,7 @@ export default function App() {
     <div className="app">
       <style>{style}</style>
       <nav className="nav">
-        <div className="nav-logo">ADKIOSK</div>
+        <div className="nav-logo">San Francisco</div>
         <div className="nav-tabs">
           <button className="nav-tab active">Admin</button>
         </div>
