@@ -47,7 +47,7 @@ const style = `
   .nav-tab.active { background: var(--accent); color: white; }
   .nav-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
   .nav-screens { display: flex; align-items: center; gap: 10px; }
-  .screen-badge { font-size: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+  .screen-badge { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
   .screen-badge span { color: var(--success); }
 
   .admin { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
@@ -851,7 +851,7 @@ export default function App() {
         <div className="nav-logo">San Francisco</div>
         <div className="nav-screens">
           {supabase ? (
-            <div className="screen-badge"><span className="realtime-dot" /><span>Realtime activo</span></div>
+            <div className="screen-badge"><span>Realtime activo</span></div>
           ) : (
             <div className="screen-badge">Sin Supabase</div>
           )}
