@@ -244,6 +244,12 @@ async function syncCache(newItems, oldItems = []) {
 // 3. Indicador "Cargando presentación..." mientras el video/imagen no está listo
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── CAMBIOS APLICADOS ───────────────────────────────────────────────────────
+// 1. Videos NO se cachean como blob (evita pantalla negra y reinicios)
+// 2. key del <video> usa currentUrl para que React remonte al cambiar fuente
+// 3. Indicador "Cargando presentación..." mientras el video/imagen no está listo
+// ─────────────────────────────────────────────────────────────────────────────
+
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -253,8 +259,9 @@ function KioskView({ items, onExit }) {
   const [speed2x, setSpeed2x] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // ── NUEVO: estado de carga ──────────────────────────────────────────────────
+  // ── Carga inicial: solo se muestra UNA VEZ al arrancar ─────────────────────
   const [isLoading, setIsLoading] = useState(true);
+  const initialLoadDone = useRef(false); // una vez que el primer ítem carga, nunca más
 
   const videoRef = useRef(null);
   const imgRef = useRef(null);
@@ -304,11 +311,6 @@ function KioskView({ items, onExit }) {
     };
   }, []);
 
-  // ── FIX 2: Resetear isLoading al cambiar de ítem ───────────────────────────
-  useEffect(() => {
-    setIsLoading(true);
-  }, [idx]);
-
   // ── Forzar tamaño ────────────────────────────────────────────────────────────
   const forceSize = useCallback((el) => {
     if (!el) return;
@@ -333,10 +335,13 @@ function KioskView({ items, onExit }) {
     if (el) forceSize(el);
   }, [idx, isVideo, forceSize]);
 
-  // ── FIX 3: onMediaLoad también quita el loading ────────────────────────────
+  // ── FIX 3: onMediaLoad quita el loading solo la primera vez ───────────────
   const onMediaLoad = useCallback((e) => {
     forceSize(e.target);
-    setIsLoading(false);
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      setIsLoading(false);
+    }
   }, [forceSize]);
 
   useEffect(() => {
@@ -612,7 +617,7 @@ function KioskView({ items, onExit }) {
           playsInline
           preload="auto"                            // ← NUEVO: empieza a bufferear antes
           onLoadedMetadata={onMediaLoad}            // quita isLoading
-          onCanPlay={() => setIsLoading(false)}     // ← NUEVO: fallback más temprano
+          onCanPlay={() => { if (!initialLoadDone.current) { initialLoadDone.current = true; setIsLoading(false); } }}
         />
       ) : (
         <img
