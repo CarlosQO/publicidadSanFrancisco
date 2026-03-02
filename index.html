@@ -3,15 +3,41 @@
 
 <head>
   <meta charset="UTF-8" />
+
+  <!-- Íconos originales -->
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <icon rel="icono del colegio san francisco de asis" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  <!-- Viewport: bloquea zoom accidental -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- iOS fullscreen -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
+  <meta name="apple-mobile-web-app-title" content="San Francisco" />
+
   <title>San Francisco Publicidad</title>
 </head>
 
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Registrar Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then(() => console.log("SW registrado ✓"))
+          .catch((e) => console.warn("SW error:", e));
+      });
+    }
+  </script>
 </body>
 
 </html>
