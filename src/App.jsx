@@ -4,14 +4,14 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_BUCKET = "media";
-// ─── localStorage helpers ────────────────────────────────────────
+
 const LS_KEY = "adkiosk_cache";
 
 function readCache() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
-    return JSON.parse(raw); // { items, settings, version }
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -1088,7 +1088,7 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
         </div>
 
         {/* overflow:hidden evita que los items se salgan en móvil */}
-        <div className="panel" style={{ overflow: "hidden" }}>
+        <div className="panel">
           <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>🗂 Orden del Carrusel</span>
             <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{items.length} elemento(s)</span>
@@ -1236,12 +1236,10 @@ export default function App() {
     defaultDuration: 5,
     activeScreens: [0],
   });
-  // Si tenemos caché, ya podemos mostrar sin esperar a Supabase
   const [loaded, setLoaded] = useState(!!cachedData);
-  // true mientras revalida en background
   const [revalidating, setRevalidating] = useState(false);
   const [saving, setSaving] = useState(false);
-
+  const userChangedRef = useRef(false);
   const localVersionRef = useRef(cachedData?.version ?? null);
   const pendingSaveRef = useRef(null);
   const isSavingRef = useRef(false);
@@ -1258,7 +1256,7 @@ export default function App() {
 
   // ─── SWR: revalidar Supabase en background ────────────────────────────
   useEffect(() => {
-    if (!supabase) { setLoaded(true); return; }
+    if (!supabase) { setLoaded(true); setTimeout(() => { userChangedRef.current = true; }, 500); return; }
 
     const revalidate = async () => {
       setRevalidating(true);
@@ -1289,15 +1287,17 @@ export default function App() {
       } finally {
         setRevalidating(false);
         setLoaded(true);
+        setTimeout(() => { userChangedRef.current = true; }, 500);
       }
     };
 
     revalidate();
   }, []);
 
-  // ─── Guardar cambios del usuario en Supabase (debounced) ──────────────
   useEffect(() => {
     if (!supabase || !loaded) return;
+    if (items.length === 0 && !localVersionRef.current) return;
+    if (!userChangedRef.current) return;
 
     setSaving(true);
     if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
@@ -1315,7 +1315,7 @@ export default function App() {
 
       if (!error) {
         localVersionRef.current = now;
-        writeCache(itemsRef.current, settingsRef.current, now);  // actualizar versión en caché
+        writeCache(itemsRef.current, settingsRef.current, now);
       }
 
       setSaving(false);
