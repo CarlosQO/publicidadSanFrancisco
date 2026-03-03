@@ -279,6 +279,127 @@ const style = `
     .admin { grid-template-columns: 1fr 1fr; padding: 8px; gap: 8px; }
     .nav { min-height: 44px; padding: 6px 12px; }
   }
+  /* ==================== RESPONSIVE MOBILE OPTIMIZED (< 550px) ==================== */
+
+@media (max-width: 550px) {
+  /* Limpieza de contenedores principales */
+  .admin {
+    padding: 12px 8px;
+    gap: 16px;
+    grid-template-columns: 1fr; /* Forzamos una sola columna */
+  }
+
+  .panel {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+
+  /* NAV: Más compacto ahora sin el módulo de pantallas */
+  .nav {
+    padding: 0 16px;
+    height: 56px;
+  }
+  
+  .nav-logo {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  /* MEDIA ITEM: Diseño flexible para evitar desbordamiento */
+  .media-item {
+    flex-wrap: wrap; /* Los controles bajan si no hay espacio */
+    padding: 12px;
+    padding-right: 44px; /* Espacio reservado para el botón eliminar */
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .media-thumb, .media-thumb-video {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+  }
+
+  .media-right {
+    flex: 1;
+    min-width: 140px; /* Evita que el texto colapse */
+  }
+
+  .media-name {
+    font-size: 13px;
+    white-space: normal; /* Permite salto de línea si es necesario */
+    word-break: break-all;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* CONTROLES DE DURACIÓN: Posicionamiento inteligente */
+  .media-duration {
+    width: 100%; 
+    margin-top: 6px;
+    justify-content: flex-start;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .dur-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+
+  .dur-val {
+    font-size: 12px;
+    min-width: 36px;
+  }
+
+  /* SETTINGS: Ajuste de inputs numéricos */
+  .setting-row {
+    gap: 10px;
+  }
+
+  .setting-label {
+    font-size: 13px;
+  }
+
+  .num-input {
+    width: 55px;
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+
+  /* BOTÓN PRINCIPAL */
+  .btn-primary {
+    padding: 14px;
+    font-size: 14px;
+  }
+
+  /* TOAST: Ajustado al ancho de pantalla */
+  .toast {
+    width: calc(100% - 32px);
+    text-align: center;
+    justify-content: center;
+  }
+}
+
+/* Ajuste para pantallas extremadamente pequeñas */
+@media (max-width: 380px) {
+  .media-item {
+    padding-right: 10px; /* Quitamos el padding extra */
+  }
+  
+  .del-btn {
+    position: static; /* El botón X vuelve al flujo normal */
+    margin-left: auto;
+    transform: none;
+  }
+  
+  .media-duration {
+    justify-content: space-between;
+  }
+}
 `;
 
 function Toast({ msg, icon = "✓" }) {
