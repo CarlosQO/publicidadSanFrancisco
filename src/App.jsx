@@ -129,7 +129,6 @@ const style = `
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    overflow: hidden;
   }
   .media-item:hover { border-color: var(--accent); }
   .media-item.dragging { opacity: 0.4; }
