@@ -51,7 +51,8 @@ const style = `
     --warning: #ffb347;
     --danger: #ff5f7e;
   }
-    /* SWR revalidation indicator */
+
+  /* SWR revalidation indicator */
   .swr-badge {
     font-size: 10px;
     background: var(--surface2);
@@ -76,7 +77,7 @@ const style = `
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);}
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
 
   .app { min-height: 100vh; display: flex; flex-direction: column; }
   .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
@@ -108,16 +109,16 @@ const style = `
   .upload-percent { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; flex-shrink: 0; }
 
   .media-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
-  .media-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 14px; 
-    background: var(--surface2); 
-    border: 1px solid var(--border); 
-    border-radius: 14px; 
-    padding: 14px 16px; 
-    cursor: grab; 
-    transition: all 0.25s ease; 
+  .media-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: grab;
+    transition: all 0.25s ease;
     position: relative;
   }
   .media-item:hover { border-color: var(--accent); }
@@ -125,43 +126,29 @@ const style = `
   .media-item.drag-over { border-color: var(--accent2); background: rgba(255,101,132,0.05); }
 
   .drag-handle { color: var(--text-dim); font-size: 20px; cursor: grab; flex-shrink: 0; padding: 4px 6px; }
+  .item-num { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-dim); min-width: 18px; flex-shrink: 0; }
   .media-thumb { width: 64px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
   .media-thumb-video { width: 64px; height: 48px; border-radius: 10px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; }
-  .media-info { flex: 1; min-width: 0; }
+
+  /* media-right: agrupa info + duración en columna */
+  .media-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .media-info { min-width: 0; }
   .media-name { font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .media-type { font-size: 11.5px; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-top: 2px; }
 
   .media-duration { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .dur-btn { 
-    width: 34px; 
-    height: 34px; 
-    border-radius: 8px; 
-    border: 1px solid var(--border); 
-    background: var(--surface); 
-    color: var(--text); 
-    cursor: pointer; 
-    font-size: 15px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.2s; 
+  .dur-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
   }
   .dur-btn:hover { border-color: var(--accent); color: var(--accent); }
   .dur-val { font-family: 'Space Mono', monospace; font-size: 14.5px; min-width: 42px; text-align: center; }
 
-  .del-btn { 
-    width: 32px; 
-    height: 32px; 
-    border-radius: 8px; 
-    border: none; 
-    background: transparent; 
-    color: var(--text-dim); 
-    cursor: pointer; 
-    font-size: 18px; 
-    transition: all 0.2s; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
+  .del-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: transparent; color: var(--text-dim); cursor: pointer; font-size: 18px;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center;
   }
   .del-btn:hover { background: rgba(255,95,126,0.15); color: var(--danger); }
 
@@ -210,18 +197,105 @@ const style = `
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
   /* ==================== RESPONSIVE MOBILE ==================== */
+
   @media (max-width: 1024px) {
-    .admin { grid-template-columns: 1fr; padding: 20px 16px; gap: 20px; }
+    .admin { grid-template-columns: 1fr; padding: 16px 12px; gap: 16px; }
   }
-  @media (max-width: 480px) {
-    .media-item { padding: 14px; gap: 12px; flex-wrap: wrap; border-radius: 16px; }
-    .media-thumb, .media-thumb-video { width: 72px; height: 54px; border-radius: 12px; }
-    .media-info { flex: 1 1 100%; margin-top: 4px; }
-    .media-duration { margin-top: 8px; width: 100%; justify-content: center; gap: 12px; }
-    .dur-btn { width: 42px; height: 42px; font-size: 18px; }
-    .dur-val { font-size: 16px; min-width: 50px; }
-    .del-btn { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; font-size: 17px; }
-    .drag-handle { font-size: 22px; }
+
+  @media (max-width: 600px) {
+
+    /* NAV */
+    .nav {
+      padding: 10px 14px;
+      height: auto;
+      min-height: 52px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .nav-logo { font-size: 13px; }
+    .nav-screens { flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .screen-badge { font-size: 9px; padding: 3px 8px; }
+    .swr-badge { font-size: 9px; padding: 3px 8px; }
+
+    /* PANEL */
+    .panel { padding: 14px 12px; border-radius: 14px; }
+    .panel-title { font-size: 11px; margin-bottom: 12px; }
+
+    /* UPLOAD */
+    .upload-zone { padding: 24px 14px; }
+    .upload-icon { font-size: 28px; }
+    .upload-text { font-size: 13px; }
+    .upload-sub { font-size: 10px; }
+
+    /* MEDIA ITEMS */
+    .media-list { gap: 10px; }
+
+    .media-item {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      padding: 10px;
+      gap: 8px;
+      border-radius: 14px;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .drag-handle { font-size: 16px; padding: 0; align-self: center; flex-shrink: 0; }
+    .item-num { font-size: 10px; min-width: 14px; align-self: center; flex-shrink: 0; }
+
+    .media-thumb,
+    .media-thumb-video {
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    /* media-right ocupa el resto y apila info + duración */
+    .media-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      padding-right: 28px;
+    }
+
+    .media-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .media-type { font-size: 10px; margin-top: 1px; }
+
+    .media-duration { display: flex; align-items: center; gap: 6px; justify-content: flex-start; }
+    .dur-btn { width: 32px; height: 32px; font-size: 15px; border-radius: 7px; }
+    .dur-val { font-size: 13px; min-width: 34px; }
+
+    .del-btn {
+      position: absolute;
+      top: 8px; right: 8px;
+      width: 24px; height: 24px;
+      font-size: 13px;
+    }
+
+    /* SETTINGS */
+    .setting-row { padding: 10px 0; gap: 10px; }
+    .setting-label { font-size: 13px; }
+    .setting-sub { font-size: 10px; }
+    .num-input { width: 56px; font-size: 12px; padding: 5px 6px; }
+
+    /* BOTÓN */
+    .btn-primary { font-size: 14px; padding: 12px; }
+
+    /* SHORTCUTS */
+    .shortcut-item { font-size: 12px; padding: 6px 0; }
+    .key { font-size: 10px; padding: 2px 6px; }
+  }
+
+  /* LANDSCAPE móvil */
+  @media (max-width: 900px) and (orientation: landscape) {
+    .admin { grid-template-columns: 1fr 1fr; padding: 10px; gap: 10px; }
+    .nav { min-height: 46px; }
   }
 `;
 
@@ -910,7 +984,8 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
           </div>
         </div>
 
-        <div className="panel">
+        {/* overflow:hidden evita que los items se salgan en móvil */}
+        <div className="panel" style={{ overflow: "hidden" }}>
           <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>🗂 Orden del Carrusel</span>
             <span style={{ color: "var(--text-dim)", fontSize: 12 }}>{items.length} elemento(s)</span>
@@ -933,30 +1008,41 @@ function AdminPanel({ items, setItems, settings, setSettings, onLaunch, saving }
                   onDrop={() => onDrop(i)}
                   onDragEnd={() => { setDraggingIdx(null); setDragOverIdx(null); }}
                 >
+                  {/* Columna 1: handle drag */}
                   <span className="drag-handle">⋮⋮</span>
-                  <span style={{ fontFamily: "Space Mono", fontSize: 11, color: "var(--text-dim)", minWidth: 18 }}>{i + 1}</span>
+
+                  {/* Columna 2: número */}
+                  <span className="item-num">{i + 1}</span>
+
+                  {/* Columna 3: thumbnail */}
                   {item.type === "image" ? (
                     <img className="media-thumb" src={item.url} alt={item.title} />
                   ) : (
                     <div className="media-thumb-video">🎬</div>
                   )}
-                  <div className="media-info">
-                    <div className="media-name">{item.title}</div>
-                    <div className="media-type">{item.type === "image" ? "IMAGEN" : "VIDEO"}</div>
-                  </div>
-                  {item.type === "image" && (
-                    <div className="media-duration">
-                      <button
-                        className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
-                      >−</button>
-                      <span className="dur-val">{item.duration || 5}s</span>
-                      <button
-                        className="dur-btn"
-                        onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
-                      >+</button>
+
+                  {/* Columna 4: info + duración (apilados) */}
+                  <div className="media-right">
+                    <div className="media-info">
+                      <div className="media-name">{item.title}</div>
+                      <div className="media-type">{item.type === "image" ? "IMAGEN" : "VIDEO"}</div>
                     </div>
-                  )}
+                    {item.type === "image" && (
+                      <div className="media-duration">
+                        <button
+                          className="dur-btn"
+                          onClick={(e) => { e.stopPropagation(); updateDuration(item.id, -1); }}
+                        >−</button>
+                        <span className="dur-val">{item.duration || 5}s</span>
+                        <button
+                          className="dur-btn"
+                          onClick={(e) => { e.stopPropagation(); updateDuration(item.id, 1); }}
+                        >+</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botón eliminar — siempre absoluto */}
                   <button
                     className="del-btn"
                     onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
