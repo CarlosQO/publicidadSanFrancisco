@@ -4,8 +4,29 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const STORAGE_BUCKET = "media";
+// ─── localStorage helpers ────────────────────────────────────────
+const LS_KEY = "adkiosk_cache";
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw); // { items, settings, version }
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(items, settings, version) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ items, settings, version }));
+  } catch (e) {
+    console.warn("localStorage write failed:", e);
+  }
+}
 
 let supabase = null;
+
 try {
   if (SUPABASE_URL !== "https://TU_PROYECTO.supabase.co") {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -30,6 +51,30 @@ const style = `
     --warning: #ffb347;
     --danger: #ff5f7e;
   }
+    /* SWR revalidation indicator */
+  .swr-badge {
+    font-size: 10px;
+    background: var(--surface2);
+    border: 1px solid rgba(255,179,71,0.4);
+    border-radius: 20px;
+    padding: 4px 12px;
+    color: var(--warning);
+    font-family: 'Space Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeIn 0.3s ease;
+  }
+  .swr-spinner {
+    width: 8px; height: 8px;
+    border: 1.5px solid rgba(255,179,71,0.3);
+    border-top-color: var(--warning);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);}
 
@@ -973,17 +1018,22 @@ export default function App() {
     setView(v);
   };
 
-  const [items, setItems] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState({
+  // ─── Estado inicial: leer desde localStorage SINCRÓNICAMENTE ──────────
+  const cachedData = readCache();
+  const [items, setItems] = useState(cachedData?.items ?? []);
+  const [settings, setSettings] = useState(cachedData?.settings ?? {
     loop: true,
     fade: true,
     defaultDuration: 5,
     activeScreens: [0],
   });
+  // Si tenemos caché, ya podemos mostrar sin esperar a Supabase
+  const [loaded, setLoaded] = useState(!!cachedData);
+  // true mientras revalida en background
+  const [revalidating, setRevalidating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const localVersionRef = useRef(null);
+  const localVersionRef = useRef(cachedData?.version ?? null);
   const pendingSaveRef = useRef(null);
   const isSavingRef = useRef(false);
   const itemsRef = useRef(items);
@@ -991,26 +1041,54 @@ export default function App() {
   useEffect(() => { itemsRef.current = items; }, [items]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
 
+  // ─── Persistir en localStorage cuando cambien items o settings ────────
+  useEffect(() => {
+    if (!loaded) return;
+    writeCache(items, settings, localVersionRef.current);
+  }, [items, settings, loaded]);
+
+  // ─── SWR: revalidar Supabase en background ────────────────────────────
   useEffect(() => {
     if (!supabase) { setLoaded(true); return; }
-    const load = async () => {
-      const { data } = await supabase
-        .from("ad_playlists")
-        .select("*")
-        .eq("id", "main")
-        .single();
-      if (data) {
-        if (data.items) setItems(data.items);
-        if (data.settings) setSettings(data.settings);
-        localVersionRef.current = data.updated_at ?? null;
+
+    const revalidate = async () => {
+      setRevalidating(true);
+      try {
+        const { data, error } = await supabase
+          .from("ad_playlists")
+          .select("id, updated_at, items, settings")
+          .eq("id", "main")
+          .single();
+
+        if (error || !data) return;
+
+        const serverVersion = data.updated_at ?? null;
+        const myVersion = localVersionRef.current;
+
+        // Solo actualizamos si el servidor tiene datos más nuevos
+        const serverIsNewer =
+          !myVersion ||
+          (serverVersion && new Date(serverVersion) > new Date(myVersion));
+
+        if (serverIsNewer) {
+          if (data.items) setItems(data.items);
+          if (data.settings) setSettings(data.settings);
+          localVersionRef.current = serverVersion;
+        }
+      } catch (e) {
+        console.warn("SWR revalidation failed, using cache:", e);
+      } finally {
+        setRevalidating(false);
+        setLoaded(true);
       }
-      setLoaded(true);
     };
-    load();
+
+    revalidate();
   }, []);
 
+  // ─── Guardar cambios del usuario en Supabase (debounced) ──────────────
   useEffect(() => {
-    if (!supabase || !loaded || items.length === 0) return;
+    if (!supabase || !loaded) return;
 
     setSaving(true);
     if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
@@ -1028,16 +1106,17 @@ export default function App() {
 
       if (!error) {
         localVersionRef.current = now;
+        writeCache(itemsRef.current, settingsRef.current, now);  // actualizar versión en caché
       }
 
       setSaving(false);
       setTimeout(() => { isSavingRef.current = false; }, 3000);
-
     }, 800);
 
     return () => { if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current); };
   }, [items, settings, loaded]);
 
+  // ─── Realtime: actualizaciones de otros clientes ──────────────────────
   useEffect(() => {
     if (!supabase) return;
 
@@ -1048,12 +1127,10 @@ export default function App() {
         { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
         (payload) => {
           if (!payload.new) return;
-
           if (isSavingRef.current) return;
 
           const serverVersion = payload.new.updated_at;
           const myVersion = localVersionRef.current;
-
           if (myVersion && serverVersion <= myVersion) return;
 
           setItems(prev => {
@@ -1087,6 +1164,13 @@ export default function App() {
       <nav className="nav">
         <div className="nav-logo">San Francisco</div>
         <div className="nav-screens">
+          {/* Indicador SWR: solo visible mientras revalida en background */}
+          {revalidating && (
+            <div className="swr-badge">
+              <div className="swr-spinner" />
+              Sincronizando…
+            </div>
+          )}
           {supabase ? (
             <div className="screen-badge"><span>Realtime activo</span></div>
           ) : (
