@@ -27,21 +27,5 @@
             "type": "image/webp",
             "purpose": "maskable"
         }
-    ],
-    "shortcuts": [
-        {
-            "name": "Ver Pantalla Publicitaria",
-            "short_name": "Kiosk",
-            "description": "Abrir el reproductor en pantalla completa",
-            "url": "/#kiosk",
-            "icons": [{ "src": "/favicon512.webp", "sizes": "512x512" }]
-        },
-        {
-            "name": "Panel de Administración",
-            "short_name": "Admin",
-            "description": "Gestionar medios y configuraciones",
-            "url": "/",
-            "icons": [{ "src": "/favicon512.webp", "sizes": "512x512" }]
-        }
     ]
 }
