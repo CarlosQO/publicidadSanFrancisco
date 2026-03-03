@@ -202,12 +202,12 @@ const style = `
     .admin { grid-template-columns: 1fr; padding: 16px 12px; gap: 16px; }
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
 
     /* NAV */
     .nav { padding: 8px 12px; height: auto; min-height: 52px; flex-wrap: wrap; gap: 6px; }
     .nav-logo { font-size: 13px; }
-    .nav-screens { gap: 5px; max-width: calc(100vw - 130px); }
+    .nav-screens { gap: 5px; max-width: calc(100vw - 150px); }
     .screen-badge { font-size: 9px; padding: 3px 7px; }
     .swr-badge { font-size: 9px; padding: 3px 7px; }
 
