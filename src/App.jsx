@@ -451,6 +451,26 @@ async function syncCache(newItems, oldItems = []) {
   }
 }
 
+useEffect(() => {
+  const handleOrientation = async () => {
+    if (screen.orientation && screen.orientation.lock) {
+      try {
+        if (window.location.hash === '#kiosk') {
+          await screen.orientation.lock('landscape');
+        } else {
+          await screen.orientation.lock('portrait');
+        }
+      } catch (error) {
+        console.warn("El bloqueo de orientación fue rechazado o no es compatible:", error);
+      }
+    }
+  };
+
+  handleOrientation();
+  window.addEventListener('hashchange', handleOrientation);
+  return () => window.removeEventListener('hashchange', handleOrientation);
+}, []);
+
 function KioskView({ items, onExit }) {
   const [idx, setIdx] = useState(0);
   const [progress, setProgress] = useState(0);
