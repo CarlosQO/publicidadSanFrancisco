@@ -1325,34 +1325,70 @@ export default function App() {
     return () => { if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current); };
   }, [items, settings, loaded]);
 
-  // ─── Realtime: actualizaciones de otros clientes ──────────────────────
   useEffect(() => {
     if (!supabase) return;
 
-    const channel = supabase
-      .channel("playlist-changes")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
-        (payload) => {
-          if (!payload.new) return;
-          if (isSavingRef.current) return;
+    let channel = null;
+    let reconnectTimer = null;
+    let isUnmounted = false;
 
-          const serverVersion = payload.new.updated_at;
-          const myVersion = localVersionRef.current;
-          if (myVersion && serverVersion <= myVersion) return;
+    const subscribe = () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
 
-          setItems(prev => {
-            syncCache(payload.new.items || [], prev);
-            return payload.new.items || [];
-          });
-          setSettings(payload.new.settings || {});
-          localVersionRef.current = serverVersion;
-        }
-      )
-      .subscribe();
+      channel = supabase
+        .channel(`playlist-changes-${Date.now()}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "ad_playlists", filter: "id=eq.main" },
+          (payload) => {
+            if (!payload.new) return;
+            if (isSavingRef.current) return;
 
-    return () => { supabase.removeChannel(channel); };
+            const serverVersion = payload.new.updated_at;
+            const myVersion = localVersionRef.current;
+            if (myVersion && serverVersion <= myVersion) return;
+
+            setItems(prev => {
+              syncCache(payload.new.items || [], prev);
+              return payload.new.items || [];
+            });
+            setSettings(payload.new.settings || {});
+            localVersionRef.current = serverVersion;
+          }
+        )
+        .subscribe((status) => {
+          if (isUnmounted) return;
+          if (status === "SUBSCRIBED") {
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+          }
+          if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            reconnectTimer = setTimeout(() => {
+              if (!isUnmounted) subscribe();
+            }, 3000);
+          }
+        });
+    };
+
+    subscribe();
+
+    const handleOnline = () => subscribe();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") subscribe();
+    };
+
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      isUnmounted = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (channel) supabase.removeChannel(channel);
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   if (view === "kiosk") {
