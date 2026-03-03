@@ -52,7 +52,6 @@ const style = `
     --danger: #ff5f7e;
   }
 
-  /* SWR revalidation indicator */
   .swr-badge {
     font-size: 10px;
     background: var(--surface2);
@@ -89,7 +88,7 @@ const style = `
     width: 100%; box-sizing: border-box;
   }
   .nav-logo { font-family: 'Space Mono', monospace; font-size: 15px; color: var(--accent); letter-spacing: 2px; white-space: nowrap; }
-  .nav-screens { display: flex; align-items: center; gap: 10px; flex-shrink: 1; min-width: 0; overflow: hidden; flex-wrap: wrap; justify-content: flex-end; }
+  .nav-screens { display: flex; align-items: center; gap: 10px; flex-shrink: 1; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
   .screen-badge { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; white-space: nowrap; }
   .screen-badge span { color: var(--success); }
 
@@ -213,10 +212,10 @@ const style = `
     .swr-badge { font-size: 9px; padding: 3px 7px; }
 
     /* ADMIN */
-    .admin { padding: 10px 10px; gap: 12px; }
+    .admin { padding: 10px; gap: 12px; }
 
-    /* PANEL */
-    .panel { padding: 14px 12px; border-radius: 14px; overflow: hidden; }
+    /* PANEL — sin overflow:hidden para no cortar nada */
+    .panel { padding: 14px 12px; border-radius: 14px; }
     .panel-title { font-size: 11px; margin-bottom: 12px; }
 
     /* UPLOAD */
@@ -229,7 +228,7 @@ const style = `
     .media-list { gap: 8px; }
 
     .media-item {
-      padding: 10px 10px 10px 8px;
+      padding: 10px 36px 10px 8px;
       gap: 7px;
     }
 
@@ -244,7 +243,7 @@ const style = `
       font-size: 18px;
     }
 
-    .media-right { gap: 5px; padding-right: 26px; }
+    .media-right { gap: 5px; }
     .media-name { font-size: 12px; }
     .media-type { font-size: 9px; }
 
@@ -252,11 +251,13 @@ const style = `
     .dur-btn { width: 28px; height: 28px; font-size: 13px; border-radius: 6px; }
     .dur-val { font-size: 12px; min-width: 28px; }
 
+    /* X en esquina con padding-right en el item para que no tape el contenido */
     .del-btn {
       position: absolute;
-      top: 8px; right: 8px;
-      width: 22px; height: 22px;
-      font-size: 12px;
+      top: 50%; right: 8px;
+      transform: translateY(-50%);
+      width: 24px; height: 24px;
+      font-size: 13px;
     }
 
     /* SETTINGS */
